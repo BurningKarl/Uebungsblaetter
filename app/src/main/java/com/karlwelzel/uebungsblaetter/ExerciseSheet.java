@@ -1,6 +1,5 @@
 package com.karlwelzel.uebungsblaetter;
 
-import android.content.SharedPreferences;
 import android.util.Log;
 
 import java.io.File;
@@ -10,9 +9,10 @@ import java.util.Date;
  * Created by karl on 15.10.17.
  */
 
+@SuppressWarnings("WeakerAccess")
 public class ExerciseSheet {
-    public String title;
-    public File file;
+    public final String title;
+    public final File file;
     public Date date;
 
     public ExerciseSheet(File file, String title, Date date) {

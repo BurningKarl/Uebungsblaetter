@@ -7,9 +7,9 @@ import java.io.File;
  */
 
 public class DownloadFile {
-    public String url;
-    public File file;
-    public String title = "";
+    public final String url;
+    public final File file;
+    private String title = "";
 
     public DownloadFile(String url, File file) {
         this.url = url;
@@ -23,7 +23,7 @@ public class DownloadFile {
     }
 
     public String getTitle() {
-        if (title == "") {
+        if (title.equals("")) {
             return file.getName();
         } else {
             return title;

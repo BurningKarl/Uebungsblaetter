@@ -1,5 +1,6 @@
 package com.karlwelzel.uebungsblaetter;
 
+import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.AsyncTask;
@@ -19,19 +20,20 @@ import java.util.List;
  * Created by karl on 19.10.17.
  */
 
+@SuppressLint("StaticFieldLeak")
 public class AsyncDownloadManager extends AsyncTask<DownloadFile, Integer, DownloadFile> {
 
-    private Context context;
-    private List<DownloadFile> urlList;
-    private String formatUrl;
-    private String formatPath;
-    private OnDownloadFinishedListener downloadListener;
-    private OnFileFoundListener fileListener;
+    private final Context context;
+    private final List<DownloadFile> urlList;
+    private final String formatUrl;
+    private final String formatPath;
+    private final OnDownloadFinishedListener downloadListener;
+    private final OnFileFoundListener fileListener;
 
-    boolean completeDownloadInProcess = false; // Bad solution, to ensure that startDownload gets called
+    private boolean completeDownloadInProcess = false; // Bad solution, to ensure that startDownload gets called
 
-    int downloadFileIndex = 0;
-    int downloadFileNumber = 1;
+    private int downloadFileIndex = 0;
+    private int downloadFileNumber = 1;
 
     private DownloadFile currentDownloadFile;
     private ProgressDialog progressDialog;
@@ -176,7 +178,7 @@ public class AsyncDownloadManager extends AsyncTask<DownloadFile, Integer, Downl
                 fileListener);
     }
 
-    public void setState(int downloadFileIndex, int downloadFileNumber) {
+    private void setState(int downloadFileIndex, int downloadFileNumber) {
         this.downloadFileIndex = downloadFileIndex;
         this.downloadFileNumber = downloadFileNumber;
     }
@@ -199,7 +201,6 @@ public class AsyncDownloadManager extends AsyncTask<DownloadFile, Integer, Downl
         } else {
             if (completeDownloadInProcess) {
                 completeDownloadInProcess = false;
-                //goToPreviousFile(); // Unnoetig
                 downloadListener.onCompleteDownloadFinished();
             }
         }

@@ -12,21 +12,17 @@ import android.view.MenuItem;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import java.io.File;
-import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
     private static final int REQUEST_INTERNET = 1;
-    private static String[] PERMISSIONS_STORAGE = {
+    private static final String[] PERMISSIONS_STORAGE = {
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
-    private static String[] PERMISSIONS_INTERNET = {
+    private static final String[] PERMISSIONS_INTERNET = {
             Manifest.permission.INTERNET
     };
 
@@ -37,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
     private SheetsListViewAdapter listViewAdapterAlgorithmicMathematics;
     private SheetsListViewAdapter listViewAdapterLinearAlgebra;
 
-    private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
+    private final BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = new BottomNavigationView.OnNavigationItemSelectedListener() {
 
         @Override
@@ -64,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
 
     };
 
-    public void verifyPermissions() {
+    private void verifyPermissions() {
         int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
         if (permission != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, REQUEST_EXTERNAL_STORAGE);
@@ -95,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         });
         String[] analysisScriptArray = {"http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1/skript.pdf"};
         String[] algorithmicMathematicsScriptArray = {"http://www.ins.uni-bonn.de/teaching/vorlesungen/AlMaWS13/script.pdf"};
-        String[] linearAlgebraScriptArray = {"https://web.archive.org/web/20120118132529/http://www.math.uni-bonn.de/people/schroer/Vorlesungen/LA/Skript070111.pdf"};
+        String[] linearAlgebraScriptArray = {"http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3/LA_2017_1-23.pdf"};
         listViewAdapterAnalysis = new SheetsListViewAdapter(this,
                 Arrays.asList(analysisScriptArray),
                 "http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1/uebung%d.pdf");
@@ -105,10 +101,12 @@ public class MainActivity extends AppCompatActivity {
         listViewAdapterLinearAlgebra = new SheetsListViewAdapter(this,
                 Arrays.asList(linearAlgebraScriptArray),
                 "http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3/u%d_ws1718.pdf");
-        mListView.setAdapter(listViewAdapterAnalysis);
-        listViewAdapterAnalysis.completeScan();
+
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
+        navigation.setSelectedItemId(R.id.navigation_analysis);
+//        mListView.setAdapter(listViewAdapterAnalysis);
+//        listViewAdapterAnalysis.completeScan();
     }
 
 }

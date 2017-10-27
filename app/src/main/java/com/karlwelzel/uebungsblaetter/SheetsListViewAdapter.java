@@ -1,6 +1,6 @@
 package com.karlwelzel.uebungsblaetter;
 
-import android.app.Activity;
+import android.annotation.SuppressLint;
 import android.app.DatePickerDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
@@ -14,11 +14,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.webkit.MimeTypeMap;
 import android.widget.ArrayAdapter;
 import android.widget.DatePicker;
-import android.widget.ImageButton;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.TwoLineListItem;
@@ -40,50 +37,46 @@ public class SheetsListViewAdapter extends ArrayAdapter<ExerciseSheet>
     private static final String PREFS_NAME = "UEBUNGSBLAETTER";
     private static final String DIRECTORY_NAME = "Uebungsblaetter";
 
-    private Context context;
-    private SharedPreferences preferences;
+    private final Context context;
+    private final SharedPreferences preferences;
 
-    private static int itemLayoutId = R.layout.sheet_listview_item;
-    private File dirPath;
-    private List<DownloadFile> urlList;
-    private String formatUrl;
-    private String formatPath;
+    private static final int itemLayoutId = R.layout.sheet_listview_item;
     private AsyncDownloadManager downloadManager;
 
     private SwipeRefreshLayout swipeRefreshLayout = null;
 
-    public boolean scanFinished = false;
+    private boolean scanFinished = false;
 
     public SheetsListViewAdapter(@NonNull Context context, List<String> urlList, String formatUrl) {
         super(context, itemLayoutId);
         this.context = context;
         preferences = context.getSharedPreferences(PREFS_NAME, 0);
-        dirPath = new File(Environment.getExternalStorageDirectory(), DIRECTORY_NAME);
-        this.urlList = new ArrayList<>();
+        File dirPath = new File(Environment.getExternalStorageDirectory(), DIRECTORY_NAME);
+        List<DownloadFile> urlList1 = new ArrayList<>();
         for (int i = 0; i < urlList.size(); i++) {
             if (i == 0) {
-                this.urlList.add(new DownloadFile(urlList.get(i),
+                urlList1.add(new DownloadFile(urlList.get(i),
                         new File(dirPath, urlList.get(i).substring(urlList.get(i).lastIndexOf("/")+1)),
                         "Skript"));
             } else {
-                this.urlList.add(new DownloadFile(urlList.get(i),
+                urlList1.add(new DownloadFile(urlList.get(i),
                         new File(dirPath, urlList.get(i).substring(urlList.get(i).lastIndexOf("/")+1))));
             }
         }
-        this.formatUrl = formatUrl;
-        formatPath = dirPath+"/"+formatUrl.substring(formatUrl.lastIndexOf("/")+1);
-        downloadManager = new AsyncDownloadManager(context, this.urlList, formatUrl, formatPath,
+        String formatPath = dirPath + "/" + formatUrl.substring(formatUrl.lastIndexOf("/") + 1);
+        downloadManager = new AsyncDownloadManager(context, urlList1, formatUrl, formatPath,
                 this, this);
     }
 
+    @SuppressLint("StringFormatInvalid")
+    @NonNull
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
+    public View getView(int position, View convertView, @NonNull ViewGroup parent) {
         Log.d("getView", "getView was called.");
         // Get the data item for this position
         final ExerciseSheet sheet = getItem(position);
 
         TextView titleView, subtitleView;
-        //ImageButton datepickerView;
         TwoLineListItem textLayout;
         // Check if an existing view is being reused, otherwise inflate the view
         if (convertView == null) {
@@ -91,12 +84,11 @@ public class SheetsListViewAdapter extends ArrayAdapter<ExerciseSheet>
             textLayout = convertView.findViewById(R.id.textLayout);
             titleView = convertView.findViewById(R.id.titleText);
             subtitleView = convertView.findViewById(R.id.subtitleText);
-            //datepickerView = convertView.findViewById(R.id.datepickerButton);
             textLayout.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     ExerciseSheet sheet = (ExerciseSheet) v.getTag();
-                    Log.d("onClick", "Geoeffnet: "+sheet.title);
+                    Log.d("onClick", "Opened: " + sheet.title);
                     openPDFDocument(sheet.file);
                 }
             });
@@ -105,15 +97,16 @@ public class SheetsListViewAdapter extends ArrayAdapter<ExerciseSheet>
                 @Override
                 public boolean onLongClick(View v) {
                     final ExerciseSheet sheet = (ExerciseSheet) v.getTag();
-                    Log.d("onLongClick", "Geoeffnet: "+sheet.title);
-                    Calendar calendar = Calendar.getInstance();
+                    Log.d("onLongClick", "Opened: " + sheet.title);
+                    final Calendar calendar = Calendar.getInstance();
                     new DatePickerDialog(context, new DatePickerDialog.OnDateSetListener() {
                         @Override
                         public void onDateSet(DatePicker view, int year, int month, int dayOfMonth) {
-                            sheet.date = new Date(year, month, dayOfMonth);
+                            calendar.set(year, month, dayOfMonth);
+                            sheet.date = calendar.getTime();
                             SharedPreferences.Editor editor = preferences.edit();
                             editor.putLong(sheet.file.toString(), sheet.date.getTime());
-                            editor.commit();
+                            editor.apply();
                             notifyDataSetChanged();
                         }
                     }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH),
@@ -128,13 +121,12 @@ public class SheetsListViewAdapter extends ArrayAdapter<ExerciseSheet>
             textLayout = convertView.findViewById(R.id.textLayout);
             titleView = convertView.findViewById(R.id.titleText);
             subtitleView = convertView.findViewById(R.id.subtitleText);
-            //datepickerView = convertView.findViewById(R.id.datepickerButton);
         }
         // Populate the data into the template view using the data object
         titleView.setText(sheet.title);
         if (sheet.date != null) {
             subtitleView.setText(String.format(context.getResources()
-                            .getString(R.string.date_message_format), sheet.date));
+                    .getString(R.string.date_message_format), sheet.date));
         } else {
             subtitleView.setText(context.getResources().getString(R.string.no_date_message));
         }
@@ -143,7 +135,7 @@ public class SheetsListViewAdapter extends ArrayAdapter<ExerciseSheet>
         return convertView;
     }
 
-    public void openPDFDocument(File file) {
+    private void openPDFDocument(File file) {
         /*MimeTypeMap myMime = MimeTypeMap.getSingleton();
                 String mimeType = myMime.getMimeTypeFromExtension("pdf");*/
         Intent newIntent = new Intent(Intent.ACTION_VIEW);
