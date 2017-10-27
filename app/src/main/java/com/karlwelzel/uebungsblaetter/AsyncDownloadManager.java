@@ -128,7 +128,7 @@ public class AsyncDownloadManager extends AsyncTask<DownloadFile, Integer, Downl
 
     protected void onProgressUpdate(Integer... progress) {
         progressDialog.setMessage(String.format(context.getResources().getString(R.string.download_message),
-                currentDownloadFile.getTitle()));
+                currentDownloadFile.title));
         progressDialog.setProgress(progress[0]);
     }
 

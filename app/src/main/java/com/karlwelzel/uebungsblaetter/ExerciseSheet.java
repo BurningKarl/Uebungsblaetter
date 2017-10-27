@@ -11,6 +11,12 @@ import java.util.Date;
 
 @SuppressWarnings("WeakerAccess")
 public class ExerciseSheet {
+    /*
+     * TODO: Maybe merge ExerciseSheet and DownloadFile
+     * This would be useful because they have overlapping information, the name of ExerciseSheet
+     * does not fit its content anymore and because both of them are just containers for some
+     * information.
+    */
     public final String title;
     public final File file;
     public Date date;

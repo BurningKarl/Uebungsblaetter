@@ -89,6 +89,15 @@ public class MainActivity extends AppCompatActivity {
                 ((SheetsListViewAdapter) mListView.getAdapter()).completeDownload(mSwipeRefreshLayout);
             }
         });
+        /*
+         * TODO: Refactor the whole download process
+         * Possible solution: Check the index site like
+         * http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3/
+         * download every file that fits some regular expression and then set the names according
+         * to this regular expression. All of this would allow to be more flexible with the files
+         * that should be shown to the user and would stop the app from downloading nonexistent
+         * files
+         */
         String[] analysisScriptArray = {"http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1/skript.pdf"};
         String[] algorithmicMathematicsScriptArray = {"http://www.ins.uni-bonn.de/teaching/vorlesungen/AlMaWS13/script.pdf"};
         String[] linearAlgebraScriptArray = {"http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3/LA_2017_1-23.pdf"};

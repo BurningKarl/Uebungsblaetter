@@ -9,24 +9,17 @@ import java.io.File;
 public class DownloadFile {
     public final String url;
     public final File file;
-    private String title = "";
+    public final String title;
 
     public DownloadFile(String url, File file) {
         this.url = url;
         this.file = file;
+        this.title = file.getName();
     }
 
     public DownloadFile(String url, File file, String title) {
         this.url = url;
         this.file = file;
         this.title = title;
-    }
-
-    public String getTitle() {
-        if (title.equals("")) {
-            return file.getName();
-        } else {
-            return title;
-        }
     }
 }

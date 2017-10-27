@@ -76,6 +76,13 @@ public class SheetsListViewAdapter extends ArrayAdapter<ExerciseSheet>
         // Get the data item for this position
         final ExerciseSheet sheet = getItem(position);
 
+        /*
+         * TODO: Replace the dialog for picking a date with a dialog for picking the score
+         * The user could save his or her score and the score that could have been achieved for a
+         * specific exercise sheet. Then next step after that would be to introduce a new bar at
+         * the bottom to show the average score for all sheets.
+         */
+
         TextView titleView, subtitleView;
         TwoLineListItem textLayout;
         // Check if an existing view is being reused, otherwise inflate the view
@@ -189,6 +196,6 @@ public class SheetsListViewAdapter extends ArrayAdapter<ExerciseSheet>
         } else {
             date = null;
         }
-        add(new ExerciseSheet(result.file, result.getTitle(), date));
+        add(new ExerciseSheet(result.file, result.title, date));
     }
 }
