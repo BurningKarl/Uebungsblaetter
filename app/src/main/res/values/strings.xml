@@ -7,4 +7,5 @@
     <string name="date_message_format" formatted="false" tools:ignore="StringFormatInvalid">Abgabe: %1$td.%1$tm.%1$ty</string>
     <string name="no_date_message">Abgabe: keine</string>
     <string name="sheet_name_format">Blatt %d</string>
+    <string name="download_message_index_file">Herunterladen der Übersicht</string>
 </resources>

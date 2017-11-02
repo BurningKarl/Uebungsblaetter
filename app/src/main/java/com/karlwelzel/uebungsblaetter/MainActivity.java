@@ -3,6 +3,7 @@ package com.karlwelzel.uebungsblaetter;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
@@ -12,7 +13,9 @@ import android.view.MenuItem;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import java.util.Arrays;
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -25,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String[] PERMISSIONS_INTERNET = {
             Manifest.permission.INTERNET
     };
+    private static final String DIRECTORY_NAME = "Uebungsblaetter";
 
     private TextView mTextMessage;
     private ListView mListView;
@@ -98,18 +102,46 @@ public class MainActivity extends AppCompatActivity {
          * that should be shown to the user and would stop the app from downloading nonexistent
          * files
          */
-        String[] analysisScriptArray = {"http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1/skript.pdf"};
-        String[] algorithmicMathematicsScriptArray = {"http://www.ins.uni-bonn.de/teaching/vorlesungen/AlMaWS13/script.pdf"};
-        String[] linearAlgebraScriptArray = {"http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3/LA_2017_1-23.pdf"};
-        listViewAdapterAnalysis = new SheetsListViewAdapter(this,
-                Arrays.asList(analysisScriptArray),
-                "http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1/uebung%d.pdf");
+        File dirPath = new File(Environment.getExternalStorageDirectory(), DIRECTORY_NAME);
+        DownloadFileGenerator analysisGenerator = null, algorithmicMathematicsGenerator = null,
+                linearAlgebraGenerator = null;
+        try {
+            analysisGenerator = new DownloadFileGenerator(this,
+                    new URL("http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1/"),
+                    new File(dirPath, getResources().getString(R.string.analysis)),
+                    "AnalysisFiles");
+            algorithmicMathematicsGenerator = new AlMaDownloadFileGenerator(this,
+                    new URL("http://ins.uni-bonn.de/teaching/vorlesungen/AlmaWS17/"),
+                    new File(dirPath, getResources().getString(R.string.algorithmic_mathematics)),
+                    "AlgorithmicMathematicsFiles");
+            linearAlgebraGenerator = new DownloadFileGenerator(this,
+                    new URL("http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3/"),
+                    new File(dirPath, getResources().getString(R.string.linear_algebra)),
+                    "LinearAlgebraFiles");
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            finish();
+            System.exit(0);
+        }
+
+//        String[] analysisScriptArray = {"http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1/skript.pdf"};
+//        String[] algorithmicMathematicsScriptArray = {"http://www.ins.uni-bonn.de/teaching/vorlesungen/AlMaWS13/script.pdf"};
+//        String[] linearAlgebraScriptArray = {"http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3/LA_2017_1-23.pdf"};
+//        listViewAdapterAnalysis = new SheetsListViewAdapter(this,
+//                Arrays.asList(analysisScriptArray),
+//                "http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1/uebung%d.pdf");
+//        listViewAdapterAlgorithmicMathematics = new SheetsListViewAdapter(this,
+//                Arrays.asList(algorithmicMathematicsScriptArray),
+//                "http://ins.uni-bonn.de/teaching/vorlesungen/AlmaWS17/Uebung/Blatt%d.pdf");
+//        listViewAdapterLinearAlgebra = new SheetsListViewAdapter(this,
+//                Arrays.asList(linearAlgebraScriptArray),
+//                "http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3/u%d_ws1718.pdf");
+
+        listViewAdapterAnalysis = new SheetsListViewAdapter(this, analysisGenerator);
         listViewAdapterAlgorithmicMathematics = new SheetsListViewAdapter(this,
-                Arrays.asList(algorithmicMathematicsScriptArray),
-                "http://ins.uni-bonn.de/teaching/vorlesungen/AlmaWS17/Uebung/Blatt%d.pdf");
+                algorithmicMathematicsGenerator);
         listViewAdapterLinearAlgebra = new SheetsListViewAdapter(this,
-                Arrays.asList(linearAlgebraScriptArray),
-                "http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3/u%d_ws1718.pdf");
+                linearAlgebraGenerator);
 
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
