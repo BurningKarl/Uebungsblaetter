@@ -16,26 +16,28 @@ import android.widget.Toast;
 import android.widget.TwoLineListItem;
 
 import java.io.File;
+import java.text.DateFormat;
+import java.util.Locale;
 
 /**
  * Created by karl on 15.10.17.
  */
 
-public class SheetsListViewAdapter extends ArrayAdapter<DownloadFile>
-        implements DownloadFileGenerator.OnListUpdateListener {
+public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
+        implements DownloadManager.OnListUpdateListener {
 
     private static final int itemLayoutId = R.layout.sheet_listview_item;
     private final Context context;
-    private DownloadFileGenerator generator;
+    private DownloadManager manager;
     private SwipeRefreshLayout swipeRefreshLayout = null;
 
     private boolean scanFinished = false;
 
-    public SheetsListViewAdapter(@NonNull Context context, DownloadFileGenerator generator) {
+    public SheetsListViewAdapter(@NonNull Context context, DownloadManager manager) {
         super(context, itemLayoutId);
         this.context = context;
-        this.generator = generator;
-        generator.setListener(this);
+        this.manager = manager;
+        manager.setListener(this);
     }
 
     @NonNull
@@ -61,7 +63,7 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadFile>
             textLayout.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    DownloadFile df = (DownloadFile) v.getTag(R.id.file_tag);
+                    DownloadDocument df = (DownloadDocument) v.getTag(R.id.file_tag);
                     Log.d("onClick", "Opened: " + df.title);
                     openPDFDocument(df.file);
                 }
@@ -77,11 +79,16 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadFile>
         }
 
         // Get the data item for this position
-        DownloadFile downloadFile = getItem(position);
+        DownloadDocument downloadDocument = getItem(position);
 
         // Populate the data into the template view using the data object
-        titleView.setText(downloadFile.title);
-        textLayout.setTag(R.id.file_tag, downloadFile);
+        titleView.setText(downloadDocument.title);
+        textLayout.setTag(R.id.file_tag, downloadDocument);
+        if (downloadDocument.getDate() != null) {
+            DateFormat dateFormat = DateFormat.getDateTimeInstance(DateFormat.SHORT,
+                    DateFormat.SHORT, Locale.GERMAN);
+            subtitleView.setText(dateFormat.format(downloadDocument.getDate()));
+        }
 
         // Return the completed view to render on screen
         return convertView;
@@ -104,21 +111,22 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadFile>
         Log.d("ListViewAdapter", "completeScan");
         if (!scanFinished) {
             clear();
-            generator.localScan();
+            manager.localScan();
             scanFinished = true;
         }
     }
 
     public void completeDownload(SwipeRefreshLayout layout) {
-        Log.d("ListViewAdapter", "completeScan");
+        Log.d("ListViewAdapter", "completeDownload");
         swipeRefreshLayout = layout;
         clear();
-        generator.download();
+        manager.download();
         // This is necessary to call execute a second time.
-        generator = generator.copy();
+        manager = manager.copy();
+        Log.d("ListViewAdapter", "New Generator class: " + manager.getClass().toString());
     }
 
-    public void onListUpdate(DownloadFile... files) {
+    public void onListUpdate(DownloadDocument... files) {
         this.addAll(files);
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setRefreshing(false);

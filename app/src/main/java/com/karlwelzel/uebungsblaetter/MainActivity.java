@@ -90,52 +90,32 @@ public class MainActivity extends AppCompatActivity {
         mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                ((SheetsListViewAdapter) mListView.getAdapter()).completeDownload(mSwipeRefreshLayout);
+                ((SheetsListViewAdapter) mListView.getAdapter())
+                        .completeDownload(mSwipeRefreshLayout);
             }
         });
-        /*
-         * TODO: Refactor the whole download process
-         * Possible solution: Check the index site like
-         * http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3/
-         * download every file that fits some regular expression and then set the names according
-         * to this regular expression. All of this would allow to be more flexible with the files
-         * that should be shown to the user and would stop the app from downloading nonexistent
-         * files
-         */
+
         File dirPath = new File(Environment.getExternalStorageDirectory(), DIRECTORY_NAME);
-        DownloadFileGenerator analysisGenerator = null, algorithmicMathematicsGenerator = null,
+        DownloadManager analysisGenerator = null, algorithmicMathematicsGenerator = null,
                 linearAlgebraGenerator = null;
         try {
-            analysisGenerator = new DownloadFileGenerator(this,
-                    new URL("http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1/"),
-                    new File(dirPath, getResources().getString(R.string.analysis)),
+            analysisGenerator = new AnaDownloadManager(this,
+                    new URL("http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1"),
+                    new File(dirPath, getString(R.string.analysis)),
                     "AnalysisFiles");
-            algorithmicMathematicsGenerator = new AlMaDownloadFileGenerator(this,
-                    new URL("http://ins.uni-bonn.de/teaching/vorlesungen/AlmaWS17/"),
-                    new File(dirPath, getResources().getString(R.string.algorithmic_mathematics)),
+            algorithmicMathematicsGenerator = new AlMaDownloadManager(this,
+                    new URL("http://ins.uni-bonn.de/teaching/vorlesungen/AlmaWS17"),
+                    new File(dirPath, getString(R.string.algorithmic_mathematics)),
                     "AlgorithmicMathematicsFiles");
-            linearAlgebraGenerator = new DownloadFileGenerator(this,
-                    new URL("http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3/"),
-                    new File(dirPath, getResources().getString(R.string.linear_algebra)),
+            linearAlgebraGenerator = new LADownloadManager(this,
+                    new URL("http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3"),
+                    new File(dirPath, getString(R.string.linear_algebra)),
                     "LinearAlgebraFiles");
         } catch (MalformedURLException e) {
             e.printStackTrace();
             finish();
             System.exit(0);
         }
-
-//        String[] analysisScriptArray = {"http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1/skript.pdf"};
-//        String[] algorithmicMathematicsScriptArray = {"http://www.ins.uni-bonn.de/teaching/vorlesungen/AlMaWS13/script.pdf"};
-//        String[] linearAlgebraScriptArray = {"http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3/LA_2017_1-23.pdf"};
-//        listViewAdapterAnalysis = new SheetsListViewAdapter(this,
-//                Arrays.asList(analysisScriptArray),
-//                "http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1/uebung%d.pdf");
-//        listViewAdapterAlgorithmicMathematics = new SheetsListViewAdapter(this,
-//                Arrays.asList(algorithmicMathematicsScriptArray),
-//                "http://ins.uni-bonn.de/teaching/vorlesungen/AlmaWS17/Uebung/Blatt%d.pdf");
-//        listViewAdapterLinearAlgebra = new SheetsListViewAdapter(this,
-//                Arrays.asList(linearAlgebraScriptArray),
-//                "http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3/u%d_ws1718.pdf");
 
         listViewAdapterAnalysis = new SheetsListViewAdapter(this, analysisGenerator);
         listViewAdapterAlgorithmicMathematics = new SheetsListViewAdapter(this,
@@ -146,8 +126,13 @@ public class MainActivity extends AppCompatActivity {
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
         navigation.setSelectedItemId(R.id.navigation_analysis);
-//        mListView.setAdapter(listViewAdapterAnalysis);
-//        listViewAdapterAnalysis.completeScan();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
+        navigation.setSelectedItemId(navigation.getSelectedItemId());
+    }
 }

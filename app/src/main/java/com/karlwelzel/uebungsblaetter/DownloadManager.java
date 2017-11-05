@@ -1,0 +1,295 @@
+package com.karlwelzel.uebungsblaetter;
+
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.os.AsyncTask;
+import android.support.annotation.NonNull;
+import android.util.Log;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
+
+/**
+ * Created by karl on 28.10.17.
+ */
+
+public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
+    private static final String PREFS_NAME = "UEBUNGSBLAETTER";
+
+    protected Context context;
+    protected URL directoryURL;
+    protected File directoryFile;
+    protected String managerID;
+    protected OnListUpdateListener listener = null;
+    protected SharedPreferences preferences;
+
+    protected ArrayList<DownloadDocument> downloadDocuments;
+    protected ArrayList<DownloadDocument> localFiles;
+
+    protected ProgressDialog progressDialog;
+
+    public DownloadManager(@NonNull Context context, URL directoryURL, File directoryFile,
+                           String managerID) {
+        this.context = context;
+        this.directoryURL = directoryURL;
+        this.directoryFile = directoryFile;
+        this.managerID = managerID;
+        preferences = context.getSharedPreferences(PREFS_NAME, 0);
+
+        downloadDocuments = loadDownloadDocuments();
+        localFiles = new ArrayList<>();
+    }
+
+    protected DownloadManager(@NonNull Context context, URL directoryURL, File directoryFile,
+                              String managerID, ArrayList<DownloadDocument> downloadDocuments,
+                              ArrayList<DownloadDocument> localFiles,
+                              OnListUpdateListener listener, SharedPreferences preferences) {
+        this.context = context;
+        this.directoryURL = directoryURL;
+        this.directoryFile = directoryFile;
+        this.managerID = managerID;
+        this.downloadDocuments = downloadDocuments;
+        this.localFiles = localFiles;
+        this.listener = listener;
+        this.preferences = preferences;
+    }
+
+    protected File urlToFile(URL url) {
+        return new File(directoryFile, new File(url.getPath()).getName());
+    }
+
+    public void setListener(OnListUpdateListener listener) {
+        this.listener = listener;
+    }
+
+    // Should be overridden by subclasses
+    protected String getTitle(URL url, File path) {
+        return path.getName();
+    }
+
+    public void localScan() {
+        localFiles.clear();
+        for (DownloadDocument df : downloadDocuments) {
+            if (df.file.exists()) {
+                localFiles.add(df);
+            }
+        }
+        notifyListener();
+    }
+
+    protected void notifyListener() {
+        if (listener != null) {
+            DownloadDocument[] array = new DownloadDocument[localFiles.size()];
+            listener.onListUpdate(localFiles.toArray(array));
+        } else {
+            Log.e("Generator", "An OnListUpdateListener should have been set");
+        }
+    }
+
+    protected void filterDownloadDocuments() {
+        // Should be overridden by subclasses
+        // The subclasses can manipulate the items that are displayed and the order in which
+        // they appear here.
+    }
+
+    public void download() {
+        execute();
+    }
+
+    protected void openProgressbar() {
+        Log.d("DownloadManager", "openProgressbar");
+        progressDialog = new ProgressDialog(context);
+        progressDialog.setMessage("");
+        progressDialog.setIndeterminate(false);
+        progressDialog.setMax(100);
+        progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        progressDialog.setCancelable(true);
+        progressDialog.show();
+    }
+
+    @Override
+    protected void onPreExecute() {
+        super.onPreExecute();
+        openProgressbar();
+    }
+
+    protected void onProgressUpdate(Integer... progress) {
+        if (progress[0] == -1) {
+            // Downloading the index file
+            progressDialog.setMessage(context.getString(R.string.download_message_index_file));
+            progressDialog.setProgress(100);
+        } else {
+            progressDialog.setMessage(String.format(context.getString(R.string.download_message),
+                    downloadDocuments.get(progress[0]).title));
+            progressDialog.setProgress(progress[1]);
+        }
+    }
+
+    protected void downloadDocument(int index) throws IOException {
+        publishProgress(index, 0);
+        DownloadDocument currentFile = downloadDocuments.get(index);
+        currentFile.file.getParentFile().mkdirs();
+        URLConnection connection = currentFile.url.openConnection();
+        connection.connect();
+        int lengthOfFile = connection.getContentLength();
+        BufferedInputStream input = new BufferedInputStream(connection.getInputStream());
+        FileOutputStream output = new FileOutputStream(currentFile.file);
+        byte data[] = new byte[1024];
+        int count;
+        long total = 0;
+        while (progressDialog.isShowing() && !isCancelled() && (count = input.read(data)) != -1) {
+            total += count;
+            publishProgress(index, (int) (total * 100) / lengthOfFile);
+            output.write(data, 0, count);
+        }
+        output.flush();
+        output.close();
+        input.close();
+    }
+
+    protected DownloadDocument hrefToDownloadDocument(String href) throws MalformedURLException {
+        return hrefToDownloadDocument(directoryURL, href);
+    }
+
+    protected DownloadDocument hrefToDownloadDocument(URL curDirectoryURL, String href)
+            throws MalformedURLException {
+        URL linkURL = new URL(curDirectoryURL.toString() + "/" + href);
+        File linkFile = urlToFile(linkURL);
+        return new DownloadDocument(linkURL, linkFile, getTitle(linkURL, linkFile));
+    }
+
+    protected void updateDownloadDocuments() throws IOException {
+        publishProgress(-1);
+        downloadDocuments.clear();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MMM-dd HH:mm:ss", Locale.US);
+        Document htmlDocument = Jsoup.connect(directoryURL.toString()).get();
+        Element table = htmlDocument.getElementsByTag("table").first();
+        for (Element row : table.getElementsByTag("tr")) {
+            Element link = row.getElementsByTag("a").first();
+            if (link == null) continue;
+            if (link.hasAttr("href") && link.attr("href").endsWith(".pdf")) {
+                Log.d("DownloadManager", "Link found: " + link.attr("href"));
+                DownloadDocument newDownloadDocument =
+                        hrefToDownloadDocument(link.attr("href"));
+                downloadDocuments.add(newDownloadDocument);
+                Element timestamp = row.getElementsByClass("m").first();
+                try {
+                    Log.d("DownloadManager", "Date set: " +
+                            dateFormat.parse(timestamp.text()));
+                    newDownloadDocument.setDate(dateFormat.parse(timestamp.text()));
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        filterDownloadDocuments();
+        saveDownloadDocuments();
+    }
+
+    protected void saveDownloadDocuments() {
+        Log.d("DownloadManager", "saveDownloadDocuments");
+        SharedPreferences.Editor editor = preferences.edit();
+        StringBuilder allFilesBuilder;
+        if (downloadDocuments.size() != 0) {
+            allFilesBuilder = new StringBuilder(downloadDocuments.get(0).serialize());
+            for (int i = 1; i < downloadDocuments.size(); i++) {
+                allFilesBuilder.append("|").append(downloadDocuments.get(i).serialize());
+            }
+        } else {
+            allFilesBuilder = new StringBuilder();
+        }
+        String completeString = allFilesBuilder.toString();
+        editor.putString(managerID, completeString);
+        editor.apply();
+    }
+
+    protected ArrayList<DownloadDocument> loadDownloadDocuments() {
+        Log.d("DownloadManager", "loadDownloadDocuments");
+        String allFiles = preferences.getString(managerID, null);
+        ArrayList<DownloadDocument> data = new ArrayList<>();
+        if (allFiles != null) {
+            final String[] strings = allFiles.split("\\|");
+            for (String string : strings) {
+                DownloadDocument document = DownloadDocument.deserialize(string);
+                if (document != null) {
+                    data.add(document);
+                }
+            }
+        }
+
+        return data;
+    }
+
+    @Override
+    protected Integer doInBackground(Integer... someNumber) {
+        // Get a list of files from directoryURL first, update downloadFiles
+        // and then download all of the them.
+        try {
+            updateDownloadDocuments();
+            boolean downloadThisDocument;
+            DownloadDocument current;
+            for (int i = 0; i < downloadDocuments.size(); i++) {
+                current = downloadDocuments.get(i);
+                downloadThisDocument = false;
+                if (!current.file.exists()) {
+                    downloadThisDocument = true;
+                } else {
+                    if (current.getDate() != null &&
+                            new Date(current.file.lastModified()).before(current.getDate())) {
+                        downloadThisDocument = true;
+                    }
+                }
+                if (downloadThisDocument) {
+                    downloadDocument(i);
+                }
+            }
+        } catch (IOException e) {
+            Log.d("downloadDocument", "Download failed. Skipping the rest");
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    @Override
+    protected void onPostExecute(Integer result) {
+        progressDialog.cancel();
+        localScan();
+    }
+
+    public DownloadManager copy() {
+        try {
+            Class clazz = this.getClass();
+            Constructor<?> constructor = clazz.getConstructor(Context.class, URL.class, File.class,
+                    String.class, ArrayList.class, ArrayList.class,
+                    OnListUpdateListener.class, SharedPreferences.class);
+            return (DownloadManager) constructor.newInstance(context, directoryURL,
+                    directoryFile, managerID, downloadDocuments, localFiles, listener, preferences);
+        } catch (NoSuchMethodException | InvocationTargetException | InstantiationException
+                | IllegalAccessException e) {
+            e.printStackTrace();
+            return new DownloadManager(context, directoryURL, directoryFile, managerID,
+                    downloadDocuments, localFiles, listener, preferences);
+        }
+    }
+
+    interface OnListUpdateListener {
+        void onListUpdate(DownloadDocument... files);
+    }
+}
