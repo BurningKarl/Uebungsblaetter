@@ -40,27 +40,41 @@ public class AlMaDownloadManager extends DownloadManager {
     protected void updateDownloadDocuments() throws IOException {
         publishProgress(-1);
         downloadDocuments.clear();
-        downloadDocuments.add(hrefToDownloadDocument(
-                new URL("http://www.ins.uni-bonn.de/teaching/vorlesungen/AlMaWS13"),
-                "script.pdf"));
-        Pattern p = Pattern.compile(".*/Uebung/Blatt\\d+\\.pdf");
+        // TODO: Replace the static addition of the script with a pattern
         SparseArray<DownloadDocument> foundDocuments = new SparseArray<>();
+        Pattern pattern_script = Pattern.compile(".*/AlMaWS13/script.pdf");
+        Pattern pattern = Pattern.compile(".*/AlmaWS17/Uebung/Blatt(\\d+)\\.pdf");
+        String input;
+        Matcher matcher;
+        int number;
         for (int i = 0; i < localFiles.size(); i++) {
-            if (p.matcher(localFiles.get(i).url.toString()).matches()) {
-                foundDocuments.put(i, localFiles.get(i));
+            input = localFiles.get(i).url.toString();
+            matcher = pattern.matcher(input);
+            if (matcher.matches()) {
+                number = Integer.parseInt(matcher.group(1));
+                foundDocuments.put(number, localFiles.get(i));
+            }
+            if (pattern_script.matcher(input).matches()) {
+                foundDocuments.put(0, localFiles.get(i));
             }
         }
-        for (int i = 1; ; i++) {
+        for (int i = 0; ; i++) {
             if (foundDocuments.indexOfKey(i) >= 0) { // is equivalent to containsKey with HashMap
                 downloadDocuments.add(foundDocuments.get(i));
+            } else if (i == 0) { // this is the script
+                DownloadDocument df = hrefToDownloadDocument(
+                        new URL("http://www.ins.uni-bonn.de/teaching/vorlesungen/AlMaWS13"),
+                        "script.pdf");
+                df.setDate(new Date());
+                downloadDocuments.add(df);
             } else {
                 DownloadDocument df = hrefToDownloadDocument(
                         String.format("Uebung/Blatt%d.pdf", i));
                 df.setDate(new Date());
                 HttpURLConnection connection = (HttpURLConnection) df.url.openConnection();
                 connection.setRequestMethod("HEAD");
-                Log.d("updateDownloadDocuments", "Response Code for " + df.url.toString() + " is "
-                        + connection.getResponseCode());
+                Log.d("updateDownloadDocuments", "Response Code for " + df.url.toString()
+                        + " is " + connection.getResponseCode());
                 if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
                     downloadDocuments.add(df);
                 } else {

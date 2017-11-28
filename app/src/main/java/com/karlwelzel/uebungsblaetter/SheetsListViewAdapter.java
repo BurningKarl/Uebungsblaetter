@@ -4,7 +4,9 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.support.annotation.NonNull;
+import android.support.v4.content.FileProvider;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -98,8 +100,16 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         /*MimeTypeMap myMime = MimeTypeMap.getSingleton();
                 String mimeType = myMime.getMimeTypeFromExtension("pdf");*/
         Intent newIntent = new Intent(Intent.ACTION_VIEW);
-        newIntent.setDataAndType(Uri.fromFile(file), "application/pdf");
-        newIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Uri uriForFile;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            uriForFile = FileProvider.getUriForFile(context,
+                    context.getApplicationContext().getPackageName() + ".provider", file);
+            newIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } else {
+            uriForFile = Uri.fromFile(file);
+        }
+        newIntent.setDataAndType(uriForFile, "application/pdf");
+        newIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
             context.startActivity(newIntent);
         } catch (ActivityNotFoundException e) {
