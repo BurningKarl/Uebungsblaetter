@@ -1,25 +1,29 @@
 package com.karlwelzel.uebungsblaetter;
 
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v4.content.FileProvider;
 import android.support.v4.widget.SwipeRefreshLayout;
+import android.text.InputType;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.TwoLineListItem;
 
 import java.io.File;
-import java.text.DateFormat;
-import java.util.Locale;
 
 /**
  * Created by karl on 15.10.17.
@@ -46,11 +50,7 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
         /*
-         * TODO: Add a dialog for picking the score
-         * The user could save his or her score and the score that could have been achieved for a
-         * specific exercise sheet. Then next step after that would be to introduce a new bar at
-         * the bottom to show the average score for all sheets.
-         * Also the subtitleView could be used to display the upload date.
+         * TODO: Introduce a new bar at the bottom to show the average score for all sheets.
          */
 
         TextView titleView, subtitleView;
@@ -65,9 +65,43 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
             textLayout.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    DownloadDocument df = (DownloadDocument) v.getTag(R.id.file_tag);
-                    Log.d("onClick", "Opened: " + df.title);
-                    openPDFDocument(df.file);
+                    DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
+                    Log.d("onClick", "Opened: " + dd.title);
+                    openPDFDocument(dd.file);
+                }
+            });
+            textLayout.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    final DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
+                    final EditText pointsInput = new EditText(context);
+                    pointsInput.setInputType(InputType.TYPE_CLASS_NUMBER |
+                            InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                    pointsInput.setRawInputType(Configuration.KEYBOARD_12KEY);
+                    pointsInput.setMaxEms(2);
+                    pointsInput.setGravity(Gravity.CENTER_HORIZONTAL);
+                    AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                    builder.setTitle(R.string.points_popup_title);
+                    builder.setView(pointsInput);
+                    builder.setPositiveButton(android.R.string.ok,
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    try {
+                                        String inputText = pointsInput.getText().toString();
+                                        if (inputText.equals(""))
+                                            return;
+                                        dd.setPoints(Double.parseDouble(inputText));
+                                    } catch (NumberFormatException e) {
+                                        Log.d("ListViewAdapter", "Input is not a number -> points deleted");
+                                        dd.setPoints(-1);
+                                    }
+                                    notifyDataSetChanged();
+                                    manager.saveDownloadDocuments();
+                                }
+                            });
+                    builder.show();
+                    return true;
                 }
             });
             ViewHolder viewHolder = new ViewHolder(textLayout, titleView, subtitleView);
@@ -86,11 +120,7 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         // Populate the data into the template view using the data object
         titleView.setText(downloadDocument.title);
         textLayout.setTag(R.id.file_tag, downloadDocument);
-        if (downloadDocument.getDate() != null) {
-            DateFormat dateFormat = DateFormat.getDateTimeInstance(DateFormat.SHORT,
-                    DateFormat.SHORT, Locale.GERMAN);
-            subtitleView.setText(dateFormat.format(downloadDocument.getDate()));
-        }
+        subtitleView.setText(downloadDocument.getSubtitle());
 
         // Return the completed view to render on screen
         return convertView;

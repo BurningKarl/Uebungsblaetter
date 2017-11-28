@@ -40,7 +40,6 @@ public class AlMaDownloadManager extends DownloadManager {
     protected void updateDownloadDocuments() throws IOException {
         publishProgress(-1);
         downloadDocuments.clear();
-        // TODO: Replace the static addition of the script with a pattern
         SparseArray<DownloadDocument> foundDocuments = new SparseArray<>();
         Pattern pattern_script = Pattern.compile(".*/AlMaWS13/script.pdf");
         Pattern pattern = Pattern.compile(".*/AlmaWS17/Uebung/Blatt(\\d+)\\.pdf");

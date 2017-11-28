@@ -11,7 +11,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.URL;
+import java.text.DateFormat;
 import java.util.Date;
+import java.util.Locale;
 
 /**
  * Created by karl on 19.10.17.
@@ -22,6 +24,7 @@ public class DownloadDocument implements Serializable {
     public final File file;
     public final String title;
     private Date date;
+    private double points = -1;
 
     public DownloadDocument(URL url, File file, String title) {
         this.url = url;
@@ -58,6 +61,29 @@ public class DownloadDocument implements Serializable {
 
     public void setDate(Date date) {
         this.date = date;
+    }
+
+    public double getPoints() {
+        return points;
+    }
+
+    public void setPoints(double points) {
+        this.points = points;
+    }
+
+    public String getSubtitle() {
+        StringBuilder builder = new StringBuilder();
+        if (getDate() != null) {
+            DateFormat dateFormat = DateFormat.getDateTimeInstance(DateFormat.SHORT,
+                    DateFormat.SHORT, Locale.GERMAN);
+            builder.append(dateFormat.format(getDate()));
+            if (getPoints() >= 0) {
+                builder.append(" - ");
+                builder.append(getPoints());
+                builder.append(" Punkte");
+            }
+        }
+        return builder.toString();
     }
 
     public String serialize() {

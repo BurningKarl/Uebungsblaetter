@@ -9,4 +9,5 @@
     <string name="sheet_name_format">Blatt %d</string>
     <string name="download_message_index_file">Herunterladen der Übersicht</string>
     <string name="script">Skript</string>
+    <string name="points_popup_title">Punkte eingeben</string>
 </resources>
