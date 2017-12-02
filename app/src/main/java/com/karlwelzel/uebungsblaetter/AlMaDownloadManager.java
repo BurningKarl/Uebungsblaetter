@@ -70,6 +70,7 @@ public class AlMaDownloadManager extends DownloadManager {
                 DownloadDocument df = hrefToDownloadDocument(
                         String.format("Uebung/Blatt%d.pdf", i));
                 df.setDate(new Date());
+                // No need to set the points, because the file is not yet downloaded
                 HttpURLConnection connection = (HttpURLConnection) df.url.openConnection();
                 connection.setRequestMethod("HEAD");
                 Log.d("updateDownloadDocuments", "Response Code for " + df.url.toString()

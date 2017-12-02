@@ -71,19 +71,86 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         this.preferences = preferences;
     }
 
+    public DownloadManager copy() {
+        try {
+            Class clazz = this.getClass();
+            Constructor<?> constructor = clazz.getConstructor(Context.class, URL.class, File.class,
+                    String.class, ArrayList.class, ArrayList.class,
+                    OnListUpdateListener.class, SharedPreferences.class);
+            return (DownloadManager) constructor.newInstance(context, directoryURL,
+                    directoryFile, managerID, downloadDocuments, localFiles, listener, preferences);
+        } catch (NoSuchMethodException | InvocationTargetException | InstantiationException
+                | IllegalAccessException e) {
+            e.printStackTrace();
+            return new DownloadManager(context, directoryURL, directoryFile, managerID,
+                    downloadDocuments, localFiles, listener, preferences);
+        }
+    }
+
+    /* Simple helper functions */
     protected File urlToFile(URL url) {
         return new File(directoryFile, new File(url.getPath()).getName());
     }
 
-    public void setListener(OnListUpdateListener listener) {
-        this.listener = listener;
+    protected DownloadDocument hrefToDownloadDocument(String href) throws MalformedURLException {
+        return hrefToDownloadDocument(directoryURL, href);
     }
 
-    // Should be overridden by subclasses
+    protected DownloadDocument hrefToDownloadDocument(URL curDirectoryURL, String href)
+            throws MalformedURLException {
+        URL linkURL = new URL(curDirectoryURL.toString() + "/" + href);
+        File linkFile = urlToFile(linkURL);
+        return new DownloadDocument(linkURL, linkFile, getTitle(linkURL, linkFile));
+    }
+
+    /* Functions that should be overridden by subclasses */
     protected String getTitle(URL url, File path) {
+        // This function is supposed to return the title of a DownloadDocument based on the url
+        // and the path to the file.
         return path.getName();
     }
 
+    protected void filterDownloadDocuments() {
+        // The subclasses can manipulate the items that are displayed and the order in which
+        // they appear here.
+    }
+
+    /* Functions used to save and load DownloadDocuments from SharedPreferences */
+    protected void saveDownloadDocuments() {
+        Log.d("DownloadManager", "saveDownloadDocuments");
+        SharedPreferences.Editor editor = preferences.edit();
+        StringBuilder allFilesBuilder;
+        if (downloadDocuments.size() != 0) {
+            allFilesBuilder = new StringBuilder(downloadDocuments.get(0).serialize());
+            for (int i = 1; i < downloadDocuments.size(); i++) {
+                allFilesBuilder.append("|").append(downloadDocuments.get(i).serialize());
+            }
+        } else {
+            allFilesBuilder = new StringBuilder();
+        }
+        String completeString = allFilesBuilder.toString();
+        editor.putString(managerID, completeString);
+        editor.apply();
+    }
+
+    protected ArrayList<DownloadDocument> loadDownloadDocuments() {
+        Log.d("DownloadManager", "loadDownloadDocuments");
+        String allFiles = preferences.getString(managerID, null);
+        ArrayList<DownloadDocument> data = new ArrayList<>();
+        if (allFiles != null) {
+            final String[] strings = allFiles.split("\\|");
+            for (String string : strings) {
+                DownloadDocument document = DownloadDocument.deserialize(string);
+                if (document != null) {
+                    data.add(document);
+                }
+            }
+        }
+
+        return data;
+    }
+
+    /* Functions for scanning and downloading */
     public void localScan() {
         localFiles.clear();
         for (DownloadDocument df : downloadDocuments) {
@@ -92,21 +159,6 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
             }
         }
         notifyListener();
-    }
-
-    protected void notifyListener() {
-        if (listener != null) {
-            DownloadDocument[] array = new DownloadDocument[localFiles.size()];
-            listener.onListUpdate(localFiles.toArray(array));
-        } else {
-            Log.e("Generator", "An OnListUpdateListener should have been set");
-        }
-    }
-
-    protected void filterDownloadDocuments() {
-        // Should be overridden by subclasses
-        // The subclasses can manipulate the items that are displayed and the order in which
-        // they appear here.
     }
 
     public void download() {
@@ -164,17 +216,6 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         input.close();
     }
 
-    protected DownloadDocument hrefToDownloadDocument(String href) throws MalformedURLException {
-        return hrefToDownloadDocument(directoryURL, href);
-    }
-
-    protected DownloadDocument hrefToDownloadDocument(URL curDirectoryURL, String href)
-            throws MalformedURLException {
-        URL linkURL = new URL(curDirectoryURL.toString() + "/" + href);
-        File linkFile = urlToFile(linkURL);
-        return new DownloadDocument(linkURL, linkFile, getTitle(linkURL, linkFile));
-    }
-
     protected void updateDownloadDocuments() throws IOException {
         publishProgress(-1);
         downloadDocuments.clear();
@@ -186,55 +227,31 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
             if (link == null) continue;
             if (link.hasAttr("href") && link.attr("href").endsWith(".pdf")) {
                 Log.d("DownloadManager", "Link found: " + link.attr("href"));
+                // Create DownloadDocument
                 DownloadDocument newDownloadDocument =
                         hrefToDownloadDocument(link.attr("href"));
                 downloadDocuments.add(newDownloadDocument);
+                // Set the date if known
                 Element timestamp = row.getElementsByClass("m").first();
                 try {
+                    newDownloadDocument.setDate(dateFormat.parse(timestamp.text()));
                     Log.d("DownloadManager", "Date set: " +
                             dateFormat.parse(timestamp.text()));
-                    newDownloadDocument.setDate(dateFormat.parse(timestamp.text()));
                 } catch (ParseException e) {
                     e.printStackTrace();
+                }
+                // Set points from localDocuments if known
+                for (DownloadDocument ld : localFiles) {
+                    if (ld.url.equals(newDownloadDocument.url)) {
+                        newDownloadDocument.setPoints(ld.getPoints());
+                        Log.d("DownloadManager", "Points set: " + ld.getPoints());
+                        break;
+                    }
                 }
             }
         }
         filterDownloadDocuments();
         saveDownloadDocuments();
-    }
-
-    protected void saveDownloadDocuments() {
-        Log.d("DownloadManager", "saveDownloadDocuments");
-        SharedPreferences.Editor editor = preferences.edit();
-        StringBuilder allFilesBuilder;
-        if (downloadDocuments.size() != 0) {
-            allFilesBuilder = new StringBuilder(downloadDocuments.get(0).serialize());
-            for (int i = 1; i < downloadDocuments.size(); i++) {
-                allFilesBuilder.append("|").append(downloadDocuments.get(i).serialize());
-            }
-        } else {
-            allFilesBuilder = new StringBuilder();
-        }
-        String completeString = allFilesBuilder.toString();
-        editor.putString(managerID, completeString);
-        editor.apply();
-    }
-
-    protected ArrayList<DownloadDocument> loadDownloadDocuments() {
-        Log.d("DownloadManager", "loadDownloadDocuments");
-        String allFiles = preferences.getString(managerID, null);
-        ArrayList<DownloadDocument> data = new ArrayList<>();
-        if (allFiles != null) {
-            final String[] strings = allFiles.split("\\|");
-            for (String string : strings) {
-                DownloadDocument document = DownloadDocument.deserialize(string);
-                if (document != null) {
-                    data.add(document);
-                }
-            }
-        }
-
-        return data;
     }
 
     @Override
@@ -243,20 +260,12 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         // and then download all of the them.
         try {
             updateDownloadDocuments();
-            boolean downloadThisDocument;
             DownloadDocument current;
             for (int i = 0; i < downloadDocuments.size(); i++) {
                 current = downloadDocuments.get(i);
-                downloadThisDocument = false;
-                if (!current.file.exists()) {
-                    downloadThisDocument = true;
-                } else {
-                    if (current.getDate() != null &&
-                            new Date(current.file.lastModified()).before(current.getDate())) {
-                        downloadThisDocument = true;
-                    }
-                }
-                if (downloadThisDocument) {
+                if (!current.file.exists() ||
+                        current.getDate() != null &&
+                                new Date(current.file.lastModified()).before(current.getDate())) {
                     downloadDocument(i);
                 }
             }
@@ -273,19 +282,17 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         localScan();
     }
 
-    public DownloadManager copy() {
-        try {
-            Class clazz = this.getClass();
-            Constructor<?> constructor = clazz.getConstructor(Context.class, URL.class, File.class,
-                    String.class, ArrayList.class, ArrayList.class,
-                    OnListUpdateListener.class, SharedPreferences.class);
-            return (DownloadManager) constructor.newInstance(context, directoryURL,
-                    directoryFile, managerID, downloadDocuments, localFiles, listener, preferences);
-        } catch (NoSuchMethodException | InvocationTargetException | InstantiationException
-                | IllegalAccessException e) {
-            e.printStackTrace();
-            return new DownloadManager(context, directoryURL, directoryFile, managerID,
-                    downloadDocuments, localFiles, listener, preferences);
+    /* Listener stuff */
+    public void setListener(OnListUpdateListener listener) {
+        this.listener = listener;
+    }
+
+    protected void notifyListener() {
+        if (listener != null) {
+            DownloadDocument[] array = new DownloadDocument[localFiles.size()];
+            listener.onListUpdate(localFiles.toArray(array));
+        } else {
+            Log.e("Generator", "An OnListUpdateListener should have been set");
         }
     }
 
