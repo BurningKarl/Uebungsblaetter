@@ -37,6 +37,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     protected URL directoryURL;
     protected File directoryFile;
     protected String managerID;
+    protected double maximumPoints = 20;
     protected OnListUpdateListener listener = null;
     protected SharedPreferences preferences;
 
@@ -88,6 +89,32 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     /* Simple helper functions */
+    public String getPointsText() {
+        double sum_points = 0;
+        int number_of_sheets = 0;
+        for (DownloadDocument downloadDocument : localFiles) {
+            if (downloadDocument.getPoints() >= 0) {
+                sum_points += downloadDocument.getPoints();
+                number_of_sheets += 1;
+            }
+        }
+        StringBuilder builder = new StringBuilder();
+        builder.append(context.getString(R.string.points_view_prefix));
+        builder.append(" ");
+        if (number_of_sheets == 0) {
+            builder.append("---");
+        } else {
+            //TODO: Find out how to fix the number of digits
+            builder.append(sum_points / number_of_sheets);
+            builder.append("/");
+            builder.append(maximumPoints);
+            builder.append(" ~ ");
+            builder.append(sum_points / number_of_sheets / maximumPoints);
+            builder.append("%");
+        }
+        return builder.toString();
+    }
+
     protected File urlToFile(URL url) {
         return new File(directoryFile, new File(url.getPath()).getName());
     }

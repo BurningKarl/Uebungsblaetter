@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.database.DataSetObserver;
 import android.net.Uri;
 import android.os.Build;
 import android.support.annotation.NonNull;
@@ -34,25 +35,31 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
 
     private static final int itemLayoutId = R.layout.sheet_listview_item;
     private final Context context;
+    private final TextView pointsView;
     private DownloadManager manager;
     private SwipeRefreshLayout swipeRefreshLayout = null;
 
     private boolean scanFinished = false;
 
-    public SheetsListViewAdapter(@NonNull Context context, DownloadManager manager) {
+    public SheetsListViewAdapter(@NonNull final Context context, TextView pointsView_,
+                                 DownloadManager manager_) {
         super(context, itemLayoutId);
         this.context = context;
-        this.manager = manager;
+        this.pointsView = pointsView_;
+        this.manager = manager_;
         manager.setListener(this);
+        registerDataSetObserver(new DataSetObserver() {
+            @Override
+            public void onChanged() {
+                super.onChanged();
+                pointsView.setText(manager.getPointsText());
+            }
+        });
     }
 
     @NonNull
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-        /*
-         * TODO: Introduce a new bar at the bottom to show the average score for all sheets.
-         */
-
         TextView titleView, subtitleView;
         TwoLineListItem textLayout;
 

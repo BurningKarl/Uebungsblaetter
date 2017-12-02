@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String DIRECTORY_NAME = "Uebungsblaetter";
 
     private TextView mTextMessage;
+    private TextView mPointsView;
     private ListView mListView;
     private SwipeRefreshLayout mSwipeRefreshLayout;
     private SheetsListViewAdapter listViewAdapterAnalysis;
@@ -85,6 +86,7 @@ public class MainActivity extends AppCompatActivity {
         verifyPermissions();
 
         mTextMessage = (TextView) findViewById(R.id.message);
+        mPointsView = (TextView) findViewById(R.id.points_view);
         mListView = (ListView) findViewById(R.id.sheets_list_view);
         mSwipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh_layout);
         mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
@@ -96,18 +98,19 @@ public class MainActivity extends AppCompatActivity {
         });
 
         File dirPath = new File(Environment.getExternalStorageDirectory(), DIRECTORY_NAME);
-        DownloadManager analysisGenerator = null, algorithmicMathematicsGenerator = null,
-                linearAlgebraGenerator = null;
+        DownloadManager analysisDownloadManager = null,
+                algorithmicMathematicsDownloadManager = null,
+                linearAlgebraDownloadManager = null;
         try {
-            analysisGenerator = new AnaDownloadManager(this,
+            analysisDownloadManager = new AnaDownloadManager(this,
                     new URL("http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1"),
                     new File(dirPath, getString(R.string.analysis)),
                     "AnalysisFiles");
-            algorithmicMathematicsGenerator = new AlMaDownloadManager(this,
+            algorithmicMathematicsDownloadManager = new AlMaDownloadManager(this,
                     new URL("http://ins.uni-bonn.de/teaching/vorlesungen/AlmaWS17"),
                     new File(dirPath, getString(R.string.algorithmic_mathematics)),
                     "AlgorithmicMathematicsFiles");
-            linearAlgebraGenerator = new LADownloadManager(this,
+            linearAlgebraDownloadManager = new LADownloadManager(this,
                     new URL("http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3"),
                     new File(dirPath, getString(R.string.linear_algebra)),
                     "LinearAlgebraFiles");
@@ -117,11 +120,12 @@ public class MainActivity extends AppCompatActivity {
             System.exit(0);
         }
 
-        listViewAdapterAnalysis = new SheetsListViewAdapter(this, analysisGenerator);
-        listViewAdapterAlgorithmicMathematics = new SheetsListViewAdapter(this,
-                algorithmicMathematicsGenerator);
-        listViewAdapterLinearAlgebra = new SheetsListViewAdapter(this,
-                linearAlgebraGenerator);
+        listViewAdapterAnalysis = new SheetsListViewAdapter(this, mPointsView,
+                analysisDownloadManager);
+        listViewAdapterAlgorithmicMathematics = new SheetsListViewAdapter(this, mPointsView,
+                algorithmicMathematicsDownloadManager);
+        listViewAdapterLinearAlgebra = new SheetsListViewAdapter(this, mPointsView,
+                linearAlgebraDownloadManager);
 
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
