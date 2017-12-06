@@ -12,6 +12,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,6 +38,11 @@ public class AlMaDownloadManager extends DownloadManager {
     }
 
     @Override
+    protected double getMaximumPoints() {
+        return 20;
+    }
+
+    @Override
     protected void updateDownloadDocuments() throws IOException {
         publishProgress(-1);
         downloadDocuments.clear();
@@ -46,15 +52,15 @@ public class AlMaDownloadManager extends DownloadManager {
         String input;
         Matcher matcher;
         int number;
-        for (int i = 0; i < localFiles.size(); i++) {
-            input = localFiles.get(i).url.toString();
+        for (DownloadDocument lf : localFiles) {
+            input = lf.url.toString();
             matcher = pattern.matcher(input);
             if (matcher.matches()) {
                 number = Integer.parseInt(matcher.group(1));
-                foundDocuments.put(number, localFiles.get(i));
+                foundDocuments.put(number, lf);
             }
             if (pattern_script.matcher(input).matches()) {
-                foundDocuments.put(0, localFiles.get(i));
+                foundDocuments.put(0, lf);
             }
         }
         for (int i = 0; ; i++) {
@@ -68,14 +74,22 @@ public class AlMaDownloadManager extends DownloadManager {
                 downloadDocuments.add(df);
             } else {
                 DownloadDocument df = hrefToDownloadDocument(
-                        String.format("Uebung/Blatt%d.pdf", i));
+                        String.format(Locale.ROOT, "Uebung/Blatt%d.pdf", i));
                 df.setDate(new Date());
                 // No need to set the points, because the file is not yet downloaded
                 HttpURLConnection connection = (HttpURLConnection) df.url.openConnection();
                 connection.setRequestMethod("HEAD");
-                Log.d("updateDownloadDocuments", "Response Code for " + df.url.toString()
-                        + " is " + connection.getResponseCode());
-                if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                boolean connectionSuccessful;
+                try {
+                    Log.d("updateDownloadDocuments", "Response Code for " + df.url.toString()
+                            + " is " + connection.getResponseCode());
+                    connectionSuccessful = connection.getResponseCode() == HttpURLConnection.HTTP_OK;
+                } catch (IOException e) {
+                    Log.d("updateDownloadDocuments", "No connection for " + df.url.toString());
+                    e.printStackTrace();
+                    connectionSuccessful = false;
+                }
+                if (connectionSuccessful) {
                     downloadDocuments.add(df);
                 } else {
                     break;

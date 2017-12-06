@@ -31,6 +31,11 @@ public class AnaDownloadManager extends DownloadManager {
     }
 
     @Override
+    protected double getMaximumPoints() {
+        return 40;
+    }
+
+    @Override
     protected String getTitle(URL url, File path) {
         if (path.getName().equals("skript.pdf")) {
             return context.getString(R.string.script);

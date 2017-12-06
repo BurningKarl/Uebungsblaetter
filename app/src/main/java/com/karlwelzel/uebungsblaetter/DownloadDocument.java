@@ -55,6 +55,14 @@ public class DownloadDocument implements Serializable {
         }
     }
 
+    public boolean equals(Object o) {
+        return o instanceof DownloadDocument && this.url.equals(((DownloadDocument) o).url);
+    }
+
+    public int hashCode() {
+        return this.url.hashCode();
+    }
+
     public Date getDate() {
         return date;
     }
@@ -79,7 +87,7 @@ public class DownloadDocument implements Serializable {
             builder.append(dateFormat.format(getDate()));
             if (getPoints() >= 0) {
                 builder.append(" - ");
-                builder.append(getPoints());
+                builder.append(String.format(Locale.GERMAN, "%.1f", getPoints()));
                 builder.append(" Punkte");
             }
         }

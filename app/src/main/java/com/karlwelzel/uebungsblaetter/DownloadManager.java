@@ -37,7 +37,6 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     protected URL directoryURL;
     protected File directoryFile;
     protected String managerID;
-    protected double maximumPoints = 20;
     protected OnListUpdateListener listener = null;
     protected SharedPreferences preferences;
 
@@ -89,6 +88,10 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     /* Simple helper functions */
+    protected double getMaximumPoints() {
+        return 20;
+    }
+
     public String getPointsText() {
         double sum_points = 0;
         int number_of_sheets = 0;
@@ -104,12 +107,13 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         if (number_of_sheets == 0) {
             builder.append("---");
         } else {
-            //TODO: Find out how to fix the number of digits
-            builder.append(sum_points / number_of_sheets);
+            builder.append(String.format(Locale.GERMAN, "%.1f",
+                    sum_points / number_of_sheets));
             builder.append("/");
-            builder.append(maximumPoints);
+            builder.append(String.format(Locale.GERMAN, "%.1f", getMaximumPoints()));
             builder.append(" ~ ");
-            builder.append(sum_points / number_of_sheets / maximumPoints);
+            builder.append(String.format(Locale.GERMAN, "%.0f",
+                    100 * sum_points / number_of_sheets / getMaximumPoints()));
             builder.append("%");
         }
         return builder.toString();
@@ -285,6 +289,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     protected Integer doInBackground(Integer... someNumber) {
         // Get a list of files from directoryURL first, update downloadFiles
         // and then download all of the them.
+        ArrayList<DownloadDocument> oldDocuments = new ArrayList<>(downloadDocuments);
         try {
             updateDownloadDocuments();
             DownloadDocument current;
@@ -299,6 +304,12 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         } catch (IOException e) {
             Log.d("downloadDocument", "Download failed. Skipping the rest");
             e.printStackTrace();
+            // Add all oldDocuments that could not be downloaded
+            for (DownloadDocument dd : oldDocuments) {
+                if (!downloadDocuments.contains(dd)) {
+                    downloadDocuments.add(dd);
+                }
+            }
         }
         return null;
     }

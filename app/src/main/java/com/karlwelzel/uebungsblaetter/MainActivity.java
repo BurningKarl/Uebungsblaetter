@@ -47,20 +47,21 @@ public class MainActivity extends AppCompatActivity {
                 case R.id.navigation_analysis:
                     mTextMessage.setText(R.string.analysis);
                     mListView.setAdapter(listViewAdapterAnalysis);
-                    listViewAdapterAnalysis.completeScan();
-                    return true;
+                    break;
                 case R.id.navigation_algorithmic_mathematics:
                     mTextMessage.setText(R.string.algorithmic_mathematics);
                     mListView.setAdapter(listViewAdapterAlgorithmicMathematics);
-                    listViewAdapterAlgorithmicMathematics.completeScan();
-                    return true;
+                    break;
                 case R.id.navigation_linear_algebra:
                     mTextMessage.setText(R.string.linear_algebra);
                     mListView.setAdapter(listViewAdapterLinearAlgebra);
-                    listViewAdapterLinearAlgebra.completeScan();
-                    return true;
+                    break;
+                default:
+                    return false;
             }
-            return false;
+            ((SheetsListViewAdapter) mListView.getAdapter()).completeScan();
+            ((SheetsListViewAdapter) mListView.getAdapter()).updatePointsViewText();
+            return true;
         }
 
     };

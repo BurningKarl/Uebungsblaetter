@@ -41,18 +41,18 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
 
     private boolean scanFinished = false;
 
-    public SheetsListViewAdapter(@NonNull final Context context, TextView pointsView_,
-                                 DownloadManager manager_) {
+    public SheetsListViewAdapter(@NonNull final Context context, TextView pointsView,
+                                 DownloadManager manager) {
         super(context, itemLayoutId);
         this.context = context;
-        this.pointsView = pointsView_;
-        this.manager = manager_;
-        manager.setListener(this);
+        this.pointsView = pointsView;
+        this.manager = manager;
+        this.manager.setListener(this);
         registerDataSetObserver(new DataSetObserver() {
             @Override
             public void onChanged() {
                 super.onChanged();
-                pointsView.setText(manager.getPointsText());
+                updatePointsViewText();
             }
         });
     }
@@ -131,6 +131,10 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
 
         // Return the completed view to render on screen
         return convertView;
+    }
+
+    public void updatePointsViewText() {
+        pointsView.setText(manager.getPointsText());
     }
 
     private void openPDFDocument(File file) {

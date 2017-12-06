@@ -32,6 +32,11 @@ public class LADownloadManager extends DownloadManager {
     }
 
     @Override
+    protected double getMaximumPoints() {
+        return 16;
+    }
+
+    @Override
     protected String getTitle(URL url, File path) {
         if (path.getName().equals("LA_2017.pdf")) {
             return context.getString(R.string.script);
