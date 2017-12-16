@@ -3,14 +3,13 @@ package com.karlwelzel.uebungsblaetter;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.support.annotation.NonNull;
+import android.util.SparseArray;
 
 import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static java.util.Collections.reverse;
 
 /**
  * Created by karl on 02.11.17.
@@ -53,16 +52,24 @@ public class AnaDownloadManager extends DownloadManager {
 
     @Override
     protected void filterDownloadDocuments() {
-        ArrayList<DownloadDocument> filtered = new ArrayList<>();
-        for (DownloadDocument df : downloadDocuments) {
-            if (!df.title.endsWith(".pdf")) {
-                //Checks if I set a custom name
-                filtered.add(df);
+        DownloadDocument script = downloadDocuments.remove(0);
+        SparseArray<DownloadDocument> sheets = new SparseArray<>();
+        String patternString = context.getString(R.string.sheet_name_format)
+                .replace("%d", "(\\d+)");
+        Pattern pattern = Pattern.compile(patternString);
+        for (DownloadDocument dd : downloadDocuments) {
+            Matcher matcher = pattern.matcher(dd.title);
+            if (matcher.matches()) {
+                //This checks whether this is a sheet or not
+                sheets.put(Integer.parseInt(matcher.group(1)), dd);
             }
         }
-        DownloadDocument script = filtered.remove(0);
-        reverse(filtered);
-        filtered.add(0, script);
-        downloadDocuments = filtered;
+        downloadDocuments.clear();
+
+        downloadDocuments.add(0, script);
+        for (int i = sheets.size() - 1; i >= 1; i--) {
+            // Reversed to have the most recent sheet at the top
+            downloadDocuments.add(sheets.valueAt(i));
+        }
     }
 }
