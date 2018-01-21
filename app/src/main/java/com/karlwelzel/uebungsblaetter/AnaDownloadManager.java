@@ -36,40 +36,70 @@ public class AnaDownloadManager extends DownloadManager {
 
     @Override
     protected String getTitle(URL url, File path) {
-        if (path.getName().equals("skript.pdf")) {
-            return context.getString(R.string.script);
-        } else {
-            Pattern pattern = Pattern.compile("uebung(\\d+)\\.pdf");
-            Matcher matcher = pattern.matcher(path.getName());
-            if (matcher.matches()) {
-                int number = Integer.parseInt(matcher.group(1));
-                return String.format(context.getString(R.string.sheet_name_format), number);
-            } else {
-                return path.getName();
-            }
+        String fileName = path.getName().replace("_", "");
+        switch (fileName) {
+            case "skript.pdf":
+                return context.getString(R.string.ana_starting_script);
+            case "riemann1.pdf":
+                return context.getString(R.string.ana_riemann_script);
+            default:
+                Matcher exerciseMatcher = Pattern.compile("uebung(\\d+)\\.pdf").matcher(fileName);
+                Matcher tutoriumMatcher = Pattern.compile("tutorium(\\d+)\\.pdf").matcher(fileName);
+                if (exerciseMatcher.matches()) {
+                    int number = Integer.parseInt(exerciseMatcher.group(1));
+                    return String.format(context.getString(R.string.sheet_name_format), number);
+                } else if (tutoriumMatcher.matches()) {
+                    int number = Integer.parseInt(tutoriumMatcher.group(1));
+                    return String.format(context.getString(R.string.tutorium_name_format), number);
+                } else {
+                    return path.getName();
+                }
         }
     }
 
     @Override
     protected void filterDownloadDocuments() {
-        DownloadDocument script = downloadDocuments.remove(0);
-        SparseArray<DownloadDocument> sheets = new SparseArray<>();
-        String patternString = context.getString(R.string.sheet_name_format)
+        SparseArray<DownloadDocument> scripts = new SparseArray<>();
+        SparseArray<DownloadDocument> exerciseSheets = new SparseArray<>();
+        SparseArray<DownloadDocument> tutoriumSheets = new SparseArray<>();
+        ArrayList<DownloadDocument> leftover = new ArrayList<>();
+        String exercisePatternString = context.getString(R.string.sheet_name_format)
                 .replace("%d", "(\\d+)");
-        Pattern pattern = Pattern.compile(patternString);
+        String tutoriumPatternString = context.getString(R.string.tutorium_name_format)
+                .replace("%d", "(\\d+)");
+        Pattern exercisePattern = Pattern.compile(exercisePatternString);
+        Pattern tutoriumPattern = Pattern.compile(tutoriumPatternString);
         for (DownloadDocument dd : downloadDocuments) {
-            Matcher matcher = pattern.matcher(dd.title);
-            if (matcher.matches()) {
-                //This checks whether this is a sheet or not
-                sheets.put(Integer.parseInt(matcher.group(1)), dd);
+            Matcher exerciseMatcher = exercisePattern.matcher(dd.title);
+            Matcher tutoriumMatcher = tutoriumPattern.matcher(dd.title);
+            if (exerciseMatcher.matches()) {
+                //This checks whether this is an exercise sheet or not
+                exerciseSheets.put(Integer.parseInt(exerciseMatcher.group(1)), dd);
+            } else if (tutoriumMatcher.matches()) {
+                //This checks whether this is a tutorium sheet or not
+                tutoriumSheets.put(Integer.parseInt(tutoriumMatcher.group(1)), dd);
+            } else if (dd.title.equals(context.getString(R.string.ana_starting_script))) {
+                scripts.put(1, dd);
+            } else if (dd.title.equals(context.getString(R.string.ana_riemann_script))) {
+                scripts.put(2, dd);
+            } else {
+                leftover.add(dd);
             }
         }
         downloadDocuments.clear();
 
-        downloadDocuments.add(0, script);
-        for (int i = sheets.size() - 1; i >= 1; i--) {
+        for (int i = 0; i < scripts.size(); i++) {
             // Reversed to have the most recent sheet at the top
-            downloadDocuments.add(sheets.valueAt(i));
+            downloadDocuments.add(scripts.valueAt(i));
         }
+        for (int i = exerciseSheets.size() - 1; i >= 0; i--) {
+            // Reversed to have the most recent sheet at the top
+            downloadDocuments.add(exerciseSheets.valueAt(i));
+        }
+        for (int i = tutoriumSheets.size() - 1; i >= 0; i--) {
+            // Reversed to have the most recent sheet at the top
+            downloadDocuments.add(tutoriumSheets.valueAt(i));
+        }
+        downloadDocuments.addAll(leftover);
     }
 }

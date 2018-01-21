@@ -1,14 +1,19 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <string name="app_name">Übungsblätter</string>
+
     <string name="analysis">Ana</string>
     <string name="algorithmic_mathematics">AlMa</string>
     <string name="linear_algebra">LA</string>
-    <string name="download_message">%s wird heruntergeladen</string>
-    <string name="date_message_format" formatted="false" tools:ignore="StringFormatInvalid">Abgabe: %1$td.%1$tm.%1$ty</string>
-    <string name="no_date_message">Abgabe: keine</string>
-    <string name="sheet_name_format">Blatt %d</string>
+
     <string name="download_message_index_file">Herunterladen der Übersicht</string>
+    <string name="download_message">%s wird heruntergeladen</string>
+
+    <string name="sheet_name_format">Blatt %d</string>
+    <string name="tutorium_name_format">Tutorium %d</string>
     <string name="script">Skript</string>
+    <string name="ana_riemann_script">Riemann-Skript</string>
+    <string name="ana_starting_script">Anfangs-Skript</string>
+
     <string name="points_popup_title">Punkte eingeben</string>
     <string name="points_view_prefix">Punkte: </string>
 </resources>

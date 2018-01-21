@@ -37,7 +37,7 @@ public class LADownloadManager extends DownloadManager {
 
     @Override
     protected String getTitle(URL url, File path) {
-        if (path.getName().equals("LA_2017.pdf")) {
+        if (path.getName().equals("LA_2018.pdf")) {
             return context.getString(R.string.script);
         } else {
             Pattern pattern = Pattern.compile("u(\\d+)_ws1718\\.pdf");
@@ -67,7 +67,7 @@ public class LADownloadManager extends DownloadManager {
         downloadDocuments.clear();
 
         downloadDocuments.add(0, script);
-        for (int i = sheets.size() - 1; i >= 1; i--) {
+        for (int i = sheets.size() - 1; i >= 0; i--) {
             // Reversed to have the most recent sheet at the top
             downloadDocuments.add(sheets.valueAt(i));
         }
