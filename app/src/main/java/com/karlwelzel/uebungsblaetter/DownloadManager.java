@@ -88,10 +88,6 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     /* Simple helper functions */
-    protected double getMaximumPoints() {
-        return 20;
-    }
-
     public String getPointsText() {
         double sum_points = 0;
         int number_of_sheets = 0;
@@ -134,7 +130,26 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         return new DownloadDocument(linkURL, linkFile, getTitle(linkURL, linkFile));
     }
 
+    /*
+    TODO: Add a function that sorts DownloadFiles with a SparseArray
+    This a repeated process that can be generalized, for example
+         protected Pattern[] getPatterns() {
+             Pattern[] result = {Pattern.compile("(Skript)|(Riemann)"),
+                                 Pattern.compile("Blatt (\\d+)"),
+                                 Pattern.compile("Tutorium (\\d+)")}
+             return result
+         }
+    The function then takes these patterns, matches all of them to the name of the DownloadFiles
+    and puts them in 3 (depends on the length of the results) seperate SparseArrays according to
+    the groups. The first item in results is expected to have seperate groups and the number of the
+    first group that is contained in the string is taken as index for the SparseArray
+    */
+
     /* Functions that should be overridden by subclasses */
+    protected double getMaximumPoints() {
+        return 20;
+    }
+
     protected String getTitle(URL url, File path) {
         // This function is supposed to return the title of a DownloadDocument based on the url
         // and the path to the file.
@@ -297,7 +312,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
                 current = downloadDocuments.get(i);
                 if (!current.file.exists() ||
                         current.getDate() != null &&
-                                new Date(current.file.lastModified()).before(current.getDate())) {
+                        new Date(current.file.lastModified()).before(current.getDate())) {
                     downloadDocument(i);
                 }
             }

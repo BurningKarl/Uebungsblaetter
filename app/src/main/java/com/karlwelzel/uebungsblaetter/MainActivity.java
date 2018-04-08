@@ -28,7 +28,10 @@ public class MainActivity extends AppCompatActivity {
     private static final String[] PERMISSIONS_INTERNET = {
             Manifest.permission.INTERNET
     };
-    private static final String DIRECTORY_NAME = "Uebungsblaetter";
+    private static final String DIRECTORY_NAME = "Uebungsblaetter_SS18";
+    private static final String ANALYSIS_URL = "http://www.math.uni-bonn.de/ag/ana/SoSe2018/Analysis2";
+    private static final String ALGORITHMIC_MATHEMATICS_URL = "http://ins.uni-bonn.de/teaching/vorlesungen/AlmaSS18";
+    private static final String LINEAR_ALGEBRA_URL = "http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/sose18/v1g4/";
 
     private TextView mTextMessage;
     private TextView mPointsView;
@@ -104,16 +107,13 @@ public class MainActivity extends AppCompatActivity {
                 linearAlgebraDownloadManager = null;
         try {
             analysisDownloadManager = new AnaDownloadManager(this,
-                    new URL("http://www.math.uni-bonn.de/ag/ana/WiSe1718/Analysis1"),
-                    new File(dirPath, getString(R.string.analysis)),
+                    new URL(ANALYSIS_URL), new File(dirPath, getString(R.string.analysis)),
                     "AnalysisFiles");
             algorithmicMathematicsDownloadManager = new AlMaDownloadManager(this,
-                    new URL("http://ins.uni-bonn.de/teaching/vorlesungen/AlmaWS17"),
-                    new File(dirPath, getString(R.string.algorithmic_mathematics)),
+                    new URL(ALGORITHMIC_MATHEMATICS_URL), new File(dirPath, getString(R.string.algorithmic_mathematics)),
                     "AlgorithmicMathematicsFiles");
             linearAlgebraDownloadManager = new LADownloadManager(this,
-                    new URL("http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/wise1718/v1g3"),
-                    new File(dirPath, getString(R.string.linear_algebra)),
+                    new URL(LINEAR_ALGEBRA_URL), new File(dirPath, getString(R.string.linear_algebra)),
                     "LinearAlgebraFiles");
         } catch (MalformedURLException e) {
             e.printStackTrace();

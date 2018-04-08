@@ -47,8 +47,8 @@ public class AlMaDownloadManager extends DownloadManager {
         publishProgress(-1);
         downloadDocuments.clear();
         SparseArray<DownloadDocument> foundDocuments = new SparseArray<>();
-        Pattern pattern_script = Pattern.compile(".*/AlMaWS13/script.pdf");
-        Pattern pattern = Pattern.compile(".*/AlmaWS17/Uebung/Blatt(\\d+)\\.pdf");
+        Pattern pattern_script = Pattern.compile(".*/script.pdf");
+        Pattern pattern = Pattern.compile(".*/Blatt(\\d+)\\.pdf");
         String input;
         Matcher matcher;
         int number;
@@ -60,13 +60,13 @@ public class AlMaDownloadManager extends DownloadManager {
                 foundDocuments.put(number, lf);
             }
             if (pattern_script.matcher(input).matches()) {
-                foundDocuments.put(0, lf);
+                foundDocuments.put(-1, lf);
             }
         }
-        for (int i = 0; ; i++) {
+        for (int i = -1; ; i++) {
             if (foundDocuments.indexOfKey(i) >= 0) { // is equivalent to containsKey with HashMap
                 downloadDocuments.add(foundDocuments.get(i));
-            } else if (i == 0) { // this is the script
+            } else if (i == -1) { // this is the script
                 DownloadDocument df = hrefToDownloadDocument(
                         new URL("http://www.ins.uni-bonn.de/teaching/vorlesungen/AlMaWS13"),
                         "script.pdf");
