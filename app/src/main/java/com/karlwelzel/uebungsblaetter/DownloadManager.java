@@ -37,34 +37,37 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     protected URL directoryURL;
     protected File directoryFile;
     protected String managerID;
-    protected OnListUpdateListener listener = null;
-    protected SharedPreferences preferences;
+    protected Integer maximumPoints;
 
     protected ArrayList<DownloadDocument> downloadDocuments;
     protected ArrayList<DownloadDocument> localFiles;
 
+    protected OnListUpdateListener listener = null;
+    protected SharedPreferences preferences;
     protected ProgressDialog progressDialog;
 
     public DownloadManager(@NonNull Context context, URL directoryURL, File directoryFile,
-                           String managerID) {
+                           String managerID, Integer maximumPoints) {
         this.context = context;
         this.directoryURL = directoryURL;
         this.directoryFile = directoryFile;
         this.managerID = managerID;
+        this.maximumPoints = maximumPoints;
         preferences = context.getSharedPreferences(PREFS_NAME, 0);
-
         downloadDocuments = loadDownloadDocuments();
         localFiles = new ArrayList<>();
     }
 
     protected DownloadManager(@NonNull Context context, URL directoryURL, File directoryFile,
-                              String managerID, ArrayList<DownloadDocument> downloadDocuments,
+                              String managerID, Integer maximumPoints,
+                              ArrayList<DownloadDocument> downloadDocuments,
                               ArrayList<DownloadDocument> localFiles,
                               OnListUpdateListener listener, SharedPreferences preferences) {
         this.context = context;
         this.directoryURL = directoryURL;
         this.directoryFile = directoryFile;
         this.managerID = managerID;
+        this.maximumPoints = maximumPoints;
         this.downloadDocuments = downloadDocuments;
         this.localFiles = localFiles;
         this.listener = listener;
@@ -75,15 +78,16 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         try {
             Class clazz = this.getClass();
             Constructor<?> constructor = clazz.getConstructor(Context.class, URL.class, File.class,
-                    String.class, ArrayList.class, ArrayList.class,
+                    String.class, Integer.class, ArrayList.class, ArrayList.class,
                     OnListUpdateListener.class, SharedPreferences.class);
             return (DownloadManager) constructor.newInstance(context, directoryURL,
-                    directoryFile, managerID, downloadDocuments, localFiles, listener, preferences);
+                    directoryFile, managerID, maximumPoints, downloadDocuments, localFiles,
+                    listener, preferences);
         } catch (NoSuchMethodException | InvocationTargetException | InstantiationException
                 | IllegalAccessException e) {
             e.printStackTrace();
             return new DownloadManager(context, directoryURL, directoryFile, managerID,
-                    downloadDocuments, localFiles, listener, preferences);
+                    maximumPoints, downloadDocuments, localFiles, listener, preferences);
         }
     }
 
@@ -106,10 +110,10 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
             builder.append(String.format(Locale.GERMAN, "%.1f",
                     sum_points / number_of_sheets));
             builder.append("/");
-            builder.append(String.format(Locale.GERMAN, "%.1f", getMaximumPoints()));
+            builder.append(String.format(Locale.GERMAN, "%d", maximumPoints));
             builder.append(" ~ ");
             builder.append(String.format(Locale.GERMAN, "%.0f",
-                    100 * sum_points / number_of_sheets / getMaximumPoints()));
+                    100 * sum_points / number_of_sheets / maximumPoints));
             builder.append("%");
         }
         return builder.toString();
@@ -129,21 +133,6 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         File linkFile = urlToFile(linkURL);
         return new DownloadDocument(linkURL, linkFile, getTitle(linkURL, linkFile));
     }
-
-    /*
-    TODO: Add a function that sorts DownloadFiles with a SparseArray
-    This a repeated process that can be generalized, for example
-         protected Pattern[] getPatterns() {
-             Pattern[] result = {Pattern.compile("(Skript)|(Riemann)"),
-                                 Pattern.compile("Blatt (\\d+)"),
-                                 Pattern.compile("Tutorium (\\d+)")}
-             return result
-         }
-    The function then takes these patterns, matches all of them to the name of the DownloadFiles
-    and puts them in 3 (depends on the length of the results) seperate SparseArrays according to
-    the groups. The first item in results is expected to have seperate groups and the number of the
-    first group that is contained in the string is taken as index for the SparseArray
-    */
 
     /* Functions that should be overridden by subclasses */
     protected double getMaximumPoints() {

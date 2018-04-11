@@ -3,7 +3,6 @@ package com.karlwelzel.uebungsblaetter;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
@@ -16,6 +15,23 @@ import android.widget.TextView;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
+
+/* TODO: Delete the specialized DownloadManagers
+ * Every download manager should
+ * - set the date from the "Last-Modified" header
+ * - have a list of script names
+ * - have a regex for the sheets
+ *
+ * All pdf-files are fetched and downloaded from the website then displayed in order
+ * 1. All scripts by date
+ * 2. All sheets by number (reversed)
+ * 3. Everything else by date
+ *
+ * Additional GUI elements
+ * - dropdown to choose the subject
+ * - option to add more subjects
+ * - option to change script names and sheet regex
+ * */
 
 public class MainActivity extends AppCompatActivity {
 
@@ -89,10 +105,10 @@ public class MainActivity extends AppCompatActivity {
 
         verifyPermissions();
 
-        mTextMessage = (TextView) findViewById(R.id.message);
-        mPointsView = (TextView) findViewById(R.id.points_view);
-        mListView = (ListView) findViewById(R.id.sheets_list_view);
-        mSwipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh_layout);
+        mTextMessage = findViewById(R.id.message);
+        mPointsView = findViewById(R.id.points_view);
+        mListView = findViewById(R.id.sheets_list_view);
+        mSwipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
         mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
@@ -101,20 +117,20 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        File dirPath = new File(Environment.getExternalStorageDirectory(), DIRECTORY_NAME);
+        File dirPath = new File(getExternalFilesDir(null), DIRECTORY_NAME);
         DownloadManager analysisDownloadManager = null,
                 algorithmicMathematicsDownloadManager = null,
                 linearAlgebraDownloadManager = null;
         try {
             analysisDownloadManager = new AnaDownloadManager(this,
                     new URL(ANALYSIS_URL), new File(dirPath, getString(R.string.analysis)),
-                    "AnalysisFiles");
+                    "AnalysisFiles", 40);
             algorithmicMathematicsDownloadManager = new AlMaDownloadManager(this,
                     new URL(ALGORITHMIC_MATHEMATICS_URL), new File(dirPath, getString(R.string.algorithmic_mathematics)),
-                    "AlgorithmicMathematicsFiles");
+                    "AlgorithmicMathematicsFiles", 20);
             linearAlgebraDownloadManager = new LADownloadManager(this,
                     new URL(LINEAR_ALGEBRA_URL), new File(dirPath, getString(R.string.linear_algebra)),
-                    "LinearAlgebraFiles");
+                    "LinearAlgebraFiles", 16);
         } catch (MalformedURLException e) {
             e.printStackTrace();
             finish();
@@ -128,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
         listViewAdapterLinearAlgebra = new SheetsListViewAdapter(this, mPointsView,
                 linearAlgebraDownloadManager);
 
-        BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
+        BottomNavigationView navigation = findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
         navigation.setSelectedItemId(R.id.navigation_analysis);
     }
@@ -137,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-        BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
+        BottomNavigationView navigation = findViewById(R.id.navigation);
         navigation.setSelectedItemId(navigation.getSelectedItemId());
     }
 }

@@ -17,22 +17,18 @@ import java.util.regex.Pattern;
 
 public class LADownloadManager extends DownloadManager {
     public LADownloadManager(@NonNull Context context, URL directoryURL, File directoryFile,
-                             String generatorID) {
-        super(context, directoryURL, directoryFile, generatorID);
+                             String managerID, Integer maximumPoints) {
+        super(context, directoryURL, directoryFile, managerID, maximumPoints);
     }
 
     // This constructor is used in DownloadFileGenerator.copy
     protected LADownloadManager(@NonNull Context context, URL directoryURL, File directoryFile,
-                                String generatorID, ArrayList<DownloadDocument> downloadDocuments,
+                                String managerID, Integer maximumPoints,
+                                ArrayList<DownloadDocument> downloadDocuments,
                                 ArrayList<DownloadDocument> localFiles,
                                 OnListUpdateListener listener, SharedPreferences preferences) {
-        super(context, directoryURL, directoryFile, generatorID, downloadDocuments, localFiles,
-                listener, preferences);
-    }
-
-    @Override
-    protected double getMaximumPoints() {
-        return 16;
+        super(context, directoryURL, directoryFile, managerID, maximumPoints, downloadDocuments,
+                localFiles, listener, preferences);
     }
 
     @Override

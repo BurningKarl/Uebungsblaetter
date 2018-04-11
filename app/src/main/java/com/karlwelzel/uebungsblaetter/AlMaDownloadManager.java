@@ -24,22 +24,18 @@ import static java.util.Collections.reverse;
 
 public class AlMaDownloadManager extends DownloadManager {
     public AlMaDownloadManager(@NonNull Context context, URL directoryURL, File directoryFile,
-                               String generatorID) {
-        super(context, directoryURL, directoryFile, generatorID);
+                               String managerID, Integer maximumPoints) {
+        super(context, directoryURL, directoryFile, managerID, maximumPoints);
     }
 
     // This constructor is used in DownloadFileGenerator.copy
     protected AlMaDownloadManager(@NonNull Context context, URL directoryURL, File directoryFile,
-                                  String generatorID, ArrayList<DownloadDocument> downloadDocuments,
+                                  String managerID, Integer maximumPoints,
+                                  ArrayList<DownloadDocument> downloadDocuments,
                                   ArrayList<DownloadDocument> localFiles,
                                   OnListUpdateListener listener, SharedPreferences preferences) {
-        super(context, directoryURL, directoryFile, generatorID, downloadDocuments, localFiles,
-                listener, preferences);
-    }
-
-    @Override
-    protected double getMaximumPoints() {
-        return 20;
+        super(context, directoryURL, directoryFile, managerID, maximumPoints, downloadDocuments,
+                localFiles, listener, preferences);
     }
 
     @Override
