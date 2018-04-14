@@ -17,12 +17,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.Locale;
 
@@ -123,32 +124,32 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         return new File(directoryFile, new File(url.getPath()).getName());
     }
 
-    protected DownloadDocument hrefToDownloadDocument(String href) throws MalformedURLException {
-        return hrefToDownloadDocument(directoryURL, href);
-    }
-
-    protected DownloadDocument hrefToDownloadDocument(URL curDirectoryURL, String href)
+    protected DownloadDocument linkElementToDownloadDocument(Element link)
             throws MalformedURLException {
-        URL linkURL = new URL(curDirectoryURL.toString() + "/" + href);
+        URL linkURL = new URL(link.attr("abs:href"));
         File linkFile = urlToFile(linkURL);
-        return new DownloadDocument(linkURL, linkFile, getTitle(linkURL, linkFile));
+        return new DownloadDocument(linkURL, linkFile, getTitle(linkURL, link.text()));
     }
 
     /* Functions that should be overridden by subclasses */
-    protected double getMaximumPoints() {
-        return 20;
-    }
-
-    protected String getTitle(URL url, File path) {
+    protected String getTitle(URL url, String nameSuggestion) {
         // This function is supposed to return the title of a DownloadDocument based on the url
         // and the path to the file.
-        return path.getName();
+        return nameSuggestion;
     }
 
-    protected void filterDownloadDocuments() {
-        // The subclasses can manipulate the items that are displayed and the order in which
-        // they appear here.
+    protected void sortDownloadDocuments() {
+        // The items in downloadDocuments and their order can be manipulated here
+        Comparator<DownloadDocument> comparator = new Comparator<DownloadDocument>() {
+            @Override
+            public int compare(DownloadDocument doc1, DownloadDocument doc2) {
+                return doc2.getDate().compareTo(doc1.getDate()); //reversed
+            }
+        };
+        Collections.sort(downloadDocuments, comparator);
     }
+
+    // TODO: Replace serializing the objects with a JSON representation
 
     /* Functions used to save and load DownloadDocuments from SharedPreferences */
     protected void saveDownloadDocuments() {
@@ -254,38 +255,33 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     protected void updateDownloadDocuments() throws IOException {
         publishProgress(-1);
         downloadDocuments.clear();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MMM-dd HH:mm:ss", Locale.US);
         Document htmlDocument = Jsoup.connect(directoryURL.toString()).get();
-        Element table = htmlDocument.getElementsByTag("table").first();
-        for (Element row : table.getElementsByTag("tr")) {
-            Element link = row.getElementsByTag("a").first();
-            if (link == null) continue;
-            if (link.hasAttr("href") && link.attr("href").endsWith(".pdf")) {
-                Log.d("DownloadManager", "Link found: " + link.attr("href"));
-                // Create DownloadDocument
-                DownloadDocument newDownloadDocument =
-                        hrefToDownloadDocument(link.attr("href"));
-                downloadDocuments.add(newDownloadDocument);
-                // Set the date if known
-                Element timestamp = row.getElementsByClass("m").first();
-                try {
-                    newDownloadDocument.setDate(dateFormat.parse(timestamp.text()));
-                    Log.d("DownloadManager", "Date set: " +
-                            dateFormat.parse(timestamp.text()));
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                }
-                // Set points from localDocuments if known
+        for (Element link : htmlDocument.getElementsByAttributeValueEnding("href", ".pdf")) {
+            Log.d("DownloadManager", "Link found: " + link.attr("href"));
+            //Create download Document
+            DownloadDocument dd = linkElementToDownloadDocument(link);
+            HttpURLConnection connection = (HttpURLConnection) dd.url.openConnection();
+            connection.setRequestMethod("HEAD");
+            Log.d("DownloadManager", "Response code: " + connection.getResponseCode());
+            //Check if it can be downloaded
+            if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                //Set date from Last-Modified header
+                Date lastModified = new Date(connection.getLastModified());
+                dd.setDate(lastModified);
+                Log.d("DownloadManager", "Date set: " + lastModified);
+
+                //Set points from local files (if known)
                 for (DownloadDocument ld : localFiles) {
-                    if (ld.url.equals(newDownloadDocument.url)) {
-                        newDownloadDocument.setPoints(ld.getPoints());
+                    if (ld.equals(dd)) { //Compares urls
+                        dd.setPoints(ld.getPoints());
                         Log.d("DownloadManager", "Points set: " + ld.getPoints());
                         break;
                     }
                 }
+                downloadDocuments.add(dd);
             }
         }
-        filterDownloadDocuments();
+        sortDownloadDocuments();
         saveDownloadDocuments();
     }
 

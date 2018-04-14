@@ -18,19 +18,20 @@ import java.net.URL;
 
 /* TODO: Delete the specialized DownloadManagers
  * Every download manager should
- * - set the date from the "Last-Modified" header
+ * - set the date from the "Last-Modified" header       Done
  * - have a list of script names
  * - have a regex for the sheets
  *
  * All pdf-files are fetched and downloaded from the website then displayed in order
  * 1. All scripts by date
  * 2. All sheets by number (reversed)
- * 3. Everything else by date
+ * 3. Everything else by date                           Done
  *
  * Additional GUI elements
  * - dropdown to choose the subject
  * - option to add more subjects
  * - option to change script names and sheet regex
+ * - option to change maximumPoints
  * */
 
 public class MainActivity extends AppCompatActivity {
@@ -45,9 +46,9 @@ public class MainActivity extends AppCompatActivity {
             Manifest.permission.INTERNET
     };
     private static final String DIRECTORY_NAME = "Uebungsblaetter_SS18";
-    private static final String ANALYSIS_URL = "http://www.math.uni-bonn.de/ag/ana/SoSe2018/Analysis2";
+    private static final String ANALYSIS_URL = "http://www.math.uni-bonn.de/ag/ana/WiSe1718/V1G1_WS_17";
     private static final String ALGORITHMIC_MATHEMATICS_URL = "http://ins.uni-bonn.de/teaching/vorlesungen/AlmaSS18";
-    private static final String LINEAR_ALGEBRA_URL = "http://www.math.uni-bonn.de/people/gjasso/resources/pdf/teaching/sose18/v1g4/";
+    private static final String LINEAR_ALGEBRA_URL = "http://www.math.uni-bonn.de/people/gjasso/teaching/sose18/v1g4/";
 
     private TextView mTextMessage;
     private TextView mPointsView;
@@ -122,13 +123,13 @@ public class MainActivity extends AppCompatActivity {
                 algorithmicMathematicsDownloadManager = null,
                 linearAlgebraDownloadManager = null;
         try {
-            analysisDownloadManager = new AnaDownloadManager(this,
+            analysisDownloadManager = new DownloadManager(this,
                     new URL(ANALYSIS_URL), new File(dirPath, getString(R.string.analysis)),
                     "AnalysisFiles", 40);
-            algorithmicMathematicsDownloadManager = new AlMaDownloadManager(this,
+            algorithmicMathematicsDownloadManager = new DownloadManager(this,
                     new URL(ALGORITHMIC_MATHEMATICS_URL), new File(dirPath, getString(R.string.algorithmic_mathematics)),
                     "AlgorithmicMathematicsFiles", 20);
-            linearAlgebraDownloadManager = new LADownloadManager(this,
+            linearAlgebraDownloadManager = new DownloadManager(this,
                     new URL(LINEAR_ALGEBRA_URL), new File(dirPath, getString(R.string.linear_algebra)),
                     "LinearAlgebraFiles", 16);
         } catch (MalformedURLException e) {

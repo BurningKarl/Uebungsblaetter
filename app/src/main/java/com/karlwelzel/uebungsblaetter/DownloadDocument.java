@@ -23,7 +23,7 @@ public class DownloadDocument implements Serializable {
     public final URL url;
     public final File file;
     public final String title;
-    private Date date;
+    private Date date = null;
     private double points = -1;
 
     public DownloadDocument(URL url, File file, String title) {
