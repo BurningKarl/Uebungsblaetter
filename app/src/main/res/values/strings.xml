@@ -8,11 +8,8 @@
     <string name="download_message_index_file">Herunterladen der Übersicht</string>
     <string name="download_message">%s wird heruntergeladen</string>
 
-    <string name="sheet_name_format">Blatt %d</string>
-    <string name="tutorium_name_format">Tutorium %d</string>
-    <string name="script">Skript</string>
-    <string name="ana_riemann_script">Riemann-Skript</string>
-    <string name="ana_starting_script">Anfangs-Skript</string>
+    <string name="sheet_title_format">Blatt %d</string>
+    <string name="sheet_title_regex">Blatt (\\d+)</string>
 
     <string name="points_popup_title">Punkte eingeben</string>
     <string name="points_view_prefix">Punkte: </string>

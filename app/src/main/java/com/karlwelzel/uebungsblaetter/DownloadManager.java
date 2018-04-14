@@ -4,8 +4,11 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
-import android.support.annotation.NonNull;
 import android.util.Log;
+import android.util.SparseArray;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -15,8 +18,7 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -25,49 +27,47 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by karl on 28.10.17.
  */
 
+// TODO: Rethink variable names and Log tag
 public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
-    private static final String PREFS_NAME = "UEBUNGSBLAETTER";
+    private String managerName;
+    private URL directoryURL;
+    private File directoryFile;
+    private Integer maximumPoints;
 
-    protected Context context;
-    protected URL directoryURL;
-    protected File directoryFile;
-    protected String managerID;
-    protected Integer maximumPoints;
+    private ArrayList<DownloadDocument> downloadDocuments;
+    private ArrayList<DownloadDocument> localFiles;
 
-    protected ArrayList<DownloadDocument> downloadDocuments;
-    protected ArrayList<DownloadDocument> localFiles;
+    private OnListUpdateListener listener = null;
+    private SharedPreferences preferences;
+    private ProgressDialog progressDialog;
 
-    protected OnListUpdateListener listener = null;
-    protected SharedPreferences preferences;
-    protected ProgressDialog progressDialog;
-
-    public DownloadManager(@NonNull Context context, URL directoryURL, File directoryFile,
-                           String managerID, Integer maximumPoints) {
-        this.context = context;
+    public DownloadManager(String managerName, URL directoryURL,
+                           File directoryFile, Integer maximumPoints) {
+        this.managerName = managerName;
         this.directoryURL = directoryURL;
         this.directoryFile = directoryFile;
-        this.managerID = managerID;
         this.maximumPoints = maximumPoints;
-        preferences = context.getSharedPreferences(PREFS_NAME, 0);
+        preferences = MainActivity.getContext().getSharedPreferences(managerName, Context.MODE_PRIVATE);
         downloadDocuments = loadDownloadDocuments();
         localFiles = new ArrayList<>();
     }
 
-    protected DownloadManager(@NonNull Context context, URL directoryURL, File directoryFile,
-                              String managerID, Integer maximumPoints,
-                              ArrayList<DownloadDocument> downloadDocuments,
-                              ArrayList<DownloadDocument> localFiles,
-                              OnListUpdateListener listener, SharedPreferences preferences) {
-        this.context = context;
+    public DownloadManager(String managerName, URL directoryURL, File directoryFile,
+                           Integer maximumPoints, ArrayList<DownloadDocument> downloadDocuments,
+                           ArrayList<DownloadDocument> localFiles,
+                           OnListUpdateListener listener, SharedPreferences preferences) {
+        this.managerName = managerName;
         this.directoryURL = directoryURL;
         this.directoryFile = directoryFile;
-        this.managerID = managerID;
         this.maximumPoints = maximumPoints;
         this.downloadDocuments = downloadDocuments;
         this.localFiles = localFiles;
@@ -76,20 +76,8 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     public DownloadManager copy() {
-        try {
-            Class clazz = this.getClass();
-            Constructor<?> constructor = clazz.getConstructor(Context.class, URL.class, File.class,
-                    String.class, Integer.class, ArrayList.class, ArrayList.class,
-                    OnListUpdateListener.class, SharedPreferences.class);
-            return (DownloadManager) constructor.newInstance(context, directoryURL,
-                    directoryFile, managerID, maximumPoints, downloadDocuments, localFiles,
-                    listener, preferences);
-        } catch (NoSuchMethodException | InvocationTargetException | InstantiationException
-                | IllegalAccessException e) {
-            e.printStackTrace();
-            return new DownloadManager(context, directoryURL, directoryFile, managerID,
-                    maximumPoints, downloadDocuments, localFiles, listener, preferences);
-        }
+        return new DownloadManager(managerName, directoryURL, directoryFile, maximumPoints,
+                downloadDocuments, localFiles, listener, preferences);
     }
 
     /* Simple helper functions */
@@ -103,7 +91,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
             }
         }
         StringBuilder builder = new StringBuilder();
-        builder.append(context.getString(R.string.points_view_prefix));
+        builder.append(MainActivity.getContext().getString(R.string.points_view_prefix));
         builder.append(" ");
         if (number_of_sheets == 0) {
             builder.append("---");
@@ -120,70 +108,126 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         return builder.toString();
     }
 
-    protected File urlToFile(URL url) {
+    private File urlToFile(URL url) {
         return new File(directoryFile, new File(url.getPath()).getName());
     }
 
-    protected DownloadDocument linkElementToDownloadDocument(Element link)
+    private DownloadDocument linkElementToDownloadDocument(Element link)
             throws MalformedURLException {
         URL linkURL = new URL(link.attr("abs:href"));
         File linkFile = urlToFile(linkURL);
         return new DownloadDocument(linkURL, linkFile, getTitle(linkURL, link.text()));
     }
 
-    /* Functions that should be overridden by subclasses */
-    protected String getTitle(URL url, String nameSuggestion) {
+    private String getTitle(URL url, String titleSuggestion) {
         // This function is supposed to return the title of a DownloadDocument based on the url
         // and the path to the file.
-        return nameSuggestion;
+        Pattern pattern = Pattern.compile(getSheetRegex());
+        Matcher matcher = pattern.matcher(titleSuggestion);
+        HashMap<String, String> titleMap = getTitleMap();
+        if (titleMap.containsKey(titleSuggestion)) {
+            return titleMap.get(titleSuggestion);
+        } else if (matcher.matches()) {
+            Integer number = Integer.valueOf(matcher.group(1));
+            return MainActivity.getContext().getString(R.string.sheet_title_format, number);
+        } else {
+            return titleSuggestion;
+        }
     }
 
-    protected void sortDownloadDocuments() {
+    public String getSheetRegex() {
+        return preferences.getString("sheetRegex", "");
+    }
+
+    public void setSheetRegex(String value) {
+        Log.d("DownloadManager|" + managerName, "setSheetRegex:\n" + value);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putString("sheetRegex", value);
+        editor.apply();
+    }
+
+    public ArrayList<String> getStickiedDocuments() {
+        Type collectionType = new TypeToken<ArrayList<String>>() {
+        }.getType();
+        String dataString = preferences.getString("stickiedDocuments", "[]");
+        return new Gson().fromJson(dataString, collectionType);
+    }
+
+    public void setStickiedDocuments(ArrayList<String> value) {
+        SharedPreferences.Editor editor = preferences.edit();
+        String dataString = new Gson().toJson(value);
+        Log.d("DownloadManager|" + managerName, "setStickiedDocuments:\n" + dataString);
+        editor.putString("stickiedDocuments", dataString);
+        editor.apply();
+    }
+
+    public HashMap<String, String> getTitleMap() {
+        Type collectionType = new TypeToken<HashMap<String, String>>() {
+        }.getType();
+        String dataString = preferences.getString("titleMap", "{}");
+        return new Gson().fromJson(dataString, collectionType);
+    }
+
+    public void setTitleMap(HashMap<String, String> value) {
+        SharedPreferences.Editor editor = preferences.edit();
+        String dataString = new Gson().toJson(value);
+        Log.d("DownloadManager|" + managerName, "setTitleMap:\n" + dataString);
+        editor.putString("titleMap", dataString);
+        editor.apply();
+    }
+
+    private void sortDownloadDocuments() {
         // The items in downloadDocuments and their order can be manipulated here
-        Comparator<DownloadDocument> comparator = new Comparator<DownloadDocument>() {
+        Comparator<DownloadDocument> dateComparator = new Comparator<DownloadDocument>() {
             @Override
             public int compare(DownloadDocument doc1, DownloadDocument doc2) {
                 return doc2.getDate().compareTo(doc1.getDate()); //reversed
             }
         };
-        Collections.sort(downloadDocuments, comparator);
+        SparseArray<DownloadDocument> stickied = new SparseArray<>();
+        SparseArray<DownloadDocument> sheets = new SparseArray<>();
+        ArrayList<DownloadDocument> leftover = new ArrayList<>();
+
+        ArrayList<String> stickiedTitles = getStickiedDocuments();
+        Pattern pattern = Pattern.compile(MainActivity.getContext().getString(R.string.sheet_title_regex));
+        Matcher matcher;
+        for (DownloadDocument dd : downloadDocuments) {
+            matcher = pattern.matcher(dd.title);
+            if (stickiedTitles.contains(dd.title)) {
+                stickied.put(stickiedTitles.indexOf(dd.title), dd);
+            } else if (matcher.matches()) {
+                sheets.put(Integer.parseInt(matcher.group(1)), dd);
+            } else {
+                leftover.add(dd);
+            }
+        }
+        downloadDocuments.clear();
+
+        Collections.sort(leftover, dateComparator);
+        for (int i = 0; i < stickied.size(); i++) {
+            downloadDocuments.add(stickied.valueAt(i));
+        }
+        for (int i = sheets.size() - 1; i >= 0; i--) {
+            downloadDocuments.add(sheets.valueAt(i));
+        }
+        downloadDocuments.addAll(leftover);
     }
 
-    // TODO: Replace serializing the objects with a JSON representation
-
     /* Functions used to save and load DownloadDocuments from SharedPreferences */
-    protected void saveDownloadDocuments() {
-        Log.d("DownloadManager", "saveDownloadDocuments");
+    public void saveDownloadDocuments() {
+        String dataString = new Gson().toJson(downloadDocuments);
         SharedPreferences.Editor editor = preferences.edit();
-        StringBuilder allFilesBuilder;
-        if (downloadDocuments.size() != 0) {
-            allFilesBuilder = new StringBuilder(downloadDocuments.get(0).serialize());
-            for (int i = 1; i < downloadDocuments.size(); i++) {
-                allFilesBuilder.append("|").append(downloadDocuments.get(i).serialize());
-            }
-        } else {
-            allFilesBuilder = new StringBuilder();
-        }
-        String completeString = allFilesBuilder.toString();
-        editor.putString(managerID, completeString);
+        editor.putString("documents", dataString);
+        Log.d("DownloadManager", "saveDownloadDocuments:\n" + dataString);
         editor.apply();
     }
 
-    protected ArrayList<DownloadDocument> loadDownloadDocuments() {
-        Log.d("DownloadManager", "loadDownloadDocuments");
-        String allFiles = preferences.getString(managerID, null);
-        ArrayList<DownloadDocument> data = new ArrayList<>();
-        if (allFiles != null) {
-            final String[] strings = allFiles.split("\\|");
-            for (String string : strings) {
-                DownloadDocument document = DownloadDocument.deserialize(string);
-                if (document != null) {
-                    data.add(document);
-                }
-            }
-        }
-
-        return data;
+    private ArrayList<DownloadDocument> loadDownloadDocuments() {
+        Type collectionType = new TypeToken<ArrayList<DownloadDocument>>() {
+        }.getType();
+        String dataString = preferences.getString("documents", "[]");
+        Log.d("DownloadManager", "loadDownloadDocuments:\n" + dataString);
+        return new Gson().fromJson(dataString, collectionType);
     }
 
     /* Functions for scanning and downloading */
@@ -201,9 +245,9 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         execute();
     }
 
-    protected void openProgressbar() {
+    private void openProgressbar() {
         Log.d("DownloadManager", "openProgressbar");
-        progressDialog = new ProgressDialog(context);
+        progressDialog = new ProgressDialog(MainActivity.getContext());
         progressDialog.setMessage("");
         progressDialog.setIndeterminate(false);
         progressDialog.setMax(100);
@@ -219,18 +263,19 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     protected void onProgressUpdate(Integer... progress) {
+        Context context = MainActivity.getContext();
         if (progress[0] == -1) {
             // Downloading the index file
             progressDialog.setMessage(context.getString(R.string.download_message_index_file));
             progressDialog.setProgress(100);
         } else {
-            progressDialog.setMessage(String.format(context.getString(R.string.download_message),
+            progressDialog.setMessage(context.getString(R.string.download_message,
                     downloadDocuments.get(progress[0]).title));
             progressDialog.setProgress(progress[1]);
         }
     }
 
-    protected void downloadDocument(int index) throws IOException {
+    private void downloadDocument(int index) throws IOException {
         publishProgress(index, 0);
         DownloadDocument currentFile = downloadDocuments.get(index);
         currentFile.file.getParentFile().mkdirs();
@@ -252,7 +297,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         input.close();
     }
 
-    protected void updateDownloadDocuments() throws IOException {
+    private void updateDownloadDocuments() throws IOException {
         publishProgress(-1);
         downloadDocuments.clear();
         Document htmlDocument = Jsoup.connect(directoryURL.toString()).get();
@@ -302,7 +347,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
                 }
             }
         } catch (IOException e) {
-            Log.d("downloadDocument", "Download failed. Skipping the rest");
+            Log.d("DownloadManager", "Download failed. Skipping the rest");
             e.printStackTrace();
             // Add all oldDocuments that could not be downloaded
             for (DownloadDocument dd : oldDocuments) {
@@ -325,12 +370,12 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         this.listener = listener;
     }
 
-    protected void notifyListener() {
+    private void notifyListener() {
         if (listener != null) {
             DownloadDocument[] array = new DownloadDocument[localFiles.size()];
             listener.onListUpdate(localFiles.toArray(array));
         } else {
-            Log.e("Generator", "An OnListUpdateListener should have been set");
+            Log.e("DownloadManager", "An OnListUpdateListener should have been set");
         }
     }
 

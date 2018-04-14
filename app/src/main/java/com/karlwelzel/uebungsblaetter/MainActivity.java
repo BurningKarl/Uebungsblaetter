@@ -1,6 +1,7 @@
 package com.karlwelzel.uebungsblaetter;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -15,16 +16,18 @@ import android.widget.TextView;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
 
-/* TODO: Delete the specialized DownloadManagers
- * Every download manager should
+/* TODO: Update the GUI to make new features available to the user
+ * The DownloadManager should
  * - set the date from the "Last-Modified" header       Done
- * - have a list of script names
- * - have a regex for the sheets
+ * - have a list of script names                        Done
+ * - have a regex for the sheets                        Done
  *
  * All pdf-files are fetched and downloaded from the website then displayed in order
- * 1. All scripts by date
- * 2. All sheets by number (reversed)
+ * 1. All scripts by given order                        Done
+ * 2. All sheets by number (reversed)                   Done
  * 3. Everything else by date                           Done
  *
  * Additional GUI elements
@@ -46,9 +49,11 @@ public class MainActivity extends AppCompatActivity {
             Manifest.permission.INTERNET
     };
     private static final String DIRECTORY_NAME = "Uebungsblaetter_SS18";
-    private static final String ANALYSIS_URL = "http://www.math.uni-bonn.de/ag/ana/WiSe1718/V1G1_WS_17";
+    private static final String ANALYSIS_URL = "http://www.math.uni-bonn.de/ag/ana/SoSe2018/V1G2_SS_18";
     private static final String ALGORITHMIC_MATHEMATICS_URL = "http://ins.uni-bonn.de/teaching/vorlesungen/AlmaSS18";
     private static final String LINEAR_ALGEBRA_URL = "http://www.math.uni-bonn.de/people/gjasso/teaching/sose18/v1g4/";
+
+    private static Context mContext;
 
     private TextView mTextMessage;
     private TextView mPointsView;
@@ -86,6 +91,10 @@ public class MainActivity extends AppCompatActivity {
 
     };
 
+    public static Context getContext() {
+        return mContext;
+    }
+
     private void verifyPermissions() {
         int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
         if (permission != PackageManager.PERMISSION_GRANTED) {
@@ -102,6 +111,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mContext = this;
         setContentView(R.layout.activity_main);
 
         verifyPermissions();
@@ -123,15 +133,39 @@ public class MainActivity extends AppCompatActivity {
                 algorithmicMathematicsDownloadManager = null,
                 linearAlgebraDownloadManager = null;
         try {
-            analysisDownloadManager = new DownloadManager(this,
-                    new URL(ANALYSIS_URL), new File(dirPath, getString(R.string.analysis)),
-                    "AnalysisFiles", 40);
-            algorithmicMathematicsDownloadManager = new DownloadManager(this,
-                    new URL(ALGORITHMIC_MATHEMATICS_URL), new File(dirPath, getString(R.string.algorithmic_mathematics)),
-                    "AlgorithmicMathematicsFiles", 20);
-            linearAlgebraDownloadManager = new DownloadManager(this,
-                    new URL(LINEAR_ALGEBRA_URL), new File(dirPath, getString(R.string.linear_algebra)),
-                    "LinearAlgebraFiles", 16);
+            analysisDownloadManager = new DownloadManager(
+                    "Analysis",
+                    new URL(ANALYSIS_URL),
+                    new File(dirPath, getString(R.string.analysis)),
+                    40);
+            algorithmicMathematicsDownloadManager = new DownloadManager(
+                    "AlgorithmicMathematics",
+                    new URL(ALGORITHMIC_MATHEMATICS_URL),
+                    new File(dirPath, getString(R.string.algorithmic_mathematics)),
+                    20);
+            linearAlgebraDownloadManager = new DownloadManager(
+                    "LinearAlgebra",
+                    new URL(LINEAR_ALGEBRA_URL),
+                    new File(dirPath, getString(R.string.linear_algebra)),
+                    16);
+
+            HashMap<String, String> almaMap = new HashMap<>();
+            almaMap.put("Alternatives Vorlesungsskript (H. Harbrecht)", "Skript");
+            algorithmicMathematicsDownloadManager.setTitleMap(almaMap);
+            ArrayList<String> almaStickied = new ArrayList<>();
+            almaStickied.add("Skript");
+            algorithmicMathematicsDownloadManager.setStickiedDocuments(almaStickied);
+            algorithmicMathematicsDownloadManager.setSheetRegex("Blatt (\\+d)");
+
+            HashMap<String, String> laMap = new HashMap<>();
+            laMap.put("Herunterladen", "Skript");
+            linearAlgebraDownloadManager.setTitleMap(laMap);
+            ArrayList<String> laStickied = new ArrayList<>();
+            laStickied.add("Skript");
+            linearAlgebraDownloadManager.setStickiedDocuments(laStickied);
+            linearAlgebraDownloadManager.setSheetRegex("Übungszettel (\\d+)[*]?");
+
+
         } catch (MalformedURLException e) {
             e.printStackTrace();
             finish();
