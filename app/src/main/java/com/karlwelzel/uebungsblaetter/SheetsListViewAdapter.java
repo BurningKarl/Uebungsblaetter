@@ -37,6 +37,7 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
     private final TextView pointsView;
     private DownloadManager manager;
     private SwipeRefreshLayout swipeRefreshLayout = null;
+    private OnManagerChangedListener listener = null;
 
     private boolean scanFinished = false;
 
@@ -143,13 +144,23 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                         new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialogInterface, int which) {
-                                // TODO: Implement auto refresh if needed (change in url, sheetRegex)
                                 //name
-                                // TODO: Implement name change for DownloadManager
+                                boolean nameChanged = false;
+                                String newName = newNameInput.getText().toString();
+                                if (!newName.equals(settings.managerName)) {
+                                    settings.managerName = newName;
+                                    manager.updatePreferences();
+                                    nameChanged = true;
+                                }
                                 //url
+                                boolean urlChanged = false;
                                 try {
                                     String inputText = newUrlInput.getText().toString();
-                                    settings.directoryURL = new URL(inputText);
+                                    URL newUrl = new URL(inputText);
+                                    if (!newUrl.equals(settings.directoryURL)) {
+                                        settings.directoryURL = newUrl;
+                                        urlChanged = true;
+                                    }
                                 } catch (MalformedURLException e) {
                                     Log.d("ListViewAdapter", "Input is not a valid url");
                                     Snackbar.make(MainActivity.contentView,
@@ -157,9 +168,14 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                             .show();
                                 }
                                 //maximumPoints
+                                boolean maximumPointsChanged = false;
                                 try {
                                     String inputText = newMaximumPointsInput.getText().toString();
-                                    settings.maximumPoints = Integer.parseInt(inputText);
+                                    int newMaximumPoints = Integer.parseInt(inputText);
+                                    if (newMaximumPoints != settings.maximumPoints) {
+                                        settings.maximumPoints = newMaximumPoints;
+                                        maximumPointsChanged = true;
+                                    }
                                 } catch (NumberFormatException e) {
                                     Log.d("ListViewAdapter", "Input is not a number");
                                     Snackbar.make(MainActivity.contentView,
@@ -167,9 +183,20 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                             .show();
                                 }
                                 //sheetRegex
-                                settings.sheetRegex = newSheetRegexInput.getText().toString();
-                                notifyDataSetChanged();
-                                manager.saveDownloadDocuments();
+                                // TODO: Changing sheetRegex should change the names without an internet connection
+                                boolean sheetRegexChanged = false;
+                                String newSheetRegex = newSheetRegexInput.getText().toString();
+                                if (!newSheetRegex.equals(settings.sheetRegex)) {
+                                    settings.sheetRegex = newSheetRegex;
+                                    sheetRegexChanged = true;
+                                }
+
+                                if (urlChanged || sheetRegexChanged || nameChanged) {
+                                    notifyListener(true);
+                                } else if (maximumPointsChanged) {
+                                    notifyListener(false);
+                                    notifyDataSetChanged();
+                                }
                             }
                         })
                 .show();
@@ -252,6 +279,23 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
 
         // Return the completed view to render on screen
         return convertView;
+    }
+
+    /* Listener stuff */
+    public void setListener(OnManagerChangedListener listener) {
+        this.listener = listener;
+    }
+
+    private void notifyListener(boolean downloadNecessary) {
+        if (listener != null) {
+            listener.onManagerChanged(downloadNecessary);
+        } else {
+            Log.e("DownloadManager", "An OnManagerChangedListener should have been set");
+        }
+    }
+
+    interface OnManagerChangedListener {
+        void onManagerChanged(boolean downloadNecessary);
     }
 
     private static final class ViewHolder {

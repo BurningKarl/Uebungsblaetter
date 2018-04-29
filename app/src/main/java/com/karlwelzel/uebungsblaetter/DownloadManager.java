@@ -80,6 +80,11 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
                 preferences);
     }
 
+    public void updatePreferences() {
+        preferences = MainActivity.getContext().getSharedPreferences(settings.managerName,
+                Context.MODE_PRIVATE);
+    }
+
     /* Getter and setter functions */
     public DownloadManagerSettings getSettings() {
         return settings;

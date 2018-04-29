@@ -55,14 +55,16 @@ import java.util.HashMap;
  * - new title (contains the current title by default)                Done
  *
  * Popup for DownloadManager:
- * - name                                                             Not implemented
+ * - name                                                             Done
  * - maximumPoints                                                    Done
  * - sheetRegex                                                       Done
  * - stickiedTitles (as a multiline input, one document per line)
  * - delete the manager (later)
  */
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements
+        SheetsListViewAdapter.OnManagerChangedListener, TabLayout.OnTabSelectedListener,
+        SwipeRefreshLayout.OnRefreshListener {
 
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
     private static final int REQUEST_INTERNET = 1;
@@ -74,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
             Manifest.permission.INTERNET
     };
     private static final String PREFERENCES_NAME = "__MainActivity";
-    private static final String DIRECTORY_NAME = "Uebungsblaetter_SS18";
+    private static final String DIRECTORY_NAME = "Uebungsblaetter";
     private static final String ANALYSIS_URL = "http://www.math.uni-bonn.de/ag/ana/SoSe2018/V1G2_SS_18";
     private static final String ALGORITHMIC_MATHEMATICS_URL = "http://ins.uni-bonn.de/teaching/vorlesungen/AlmaSS18";
     private static final String LINEAR_ALGEBRA_URL = "http://www.math.uni-bonn.de/people/gjasso/teaching/sose18/v1g4/";
@@ -92,31 +94,6 @@ public class MainActivity extends AppCompatActivity {
     private ListView listView;
     private TabLayout navigationBar;
     private SwipeRefreshLayout swipeRefreshLayout;
-
-    private final TabLayout.OnTabSelectedListener onTabSelectedListener = new TabLayout.OnTabSelectedListener() {
-        @Override
-        public void onTabSelected(TabLayout.Tab tab) {
-            Log.d("MainActivity", "onTabSelected: " + tab.getPosition() + "|" + tab.getText());
-            SheetsListViewAdapter chosenAdapter = (SheetsListViewAdapter) tab.getTag();
-            if (chosenAdapter == null) {
-                Log.e("MainActivity", "Tab has no tag!");
-            } else {
-                listView.setAdapter(chosenAdapter);
-                chosenAdapter.completeScan();
-                chosenAdapter.updatePointsViewText();
-            }
-        }
-
-        @Override
-        public void onTabUnselected(TabLayout.Tab tab) {
-
-        }
-
-        @Override
-        public void onTabReselected(TabLayout.Tab tab) {
-            onTabSelected(tab);
-        }
-    };
 
     public static Context getContext() {
         return activityContext;
@@ -160,6 +137,46 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onTabSelected(TabLayout.Tab tab) {
+        Log.d("MainActivity", "onTabSelected: " + tab.getPosition() + "|" + tab.getText());
+        SheetsListViewAdapter chosenAdapter = (SheetsListViewAdapter) tab.getTag();
+        if (chosenAdapter == null) {
+            Log.e("MainActivity", "Tab has no tag!");
+        } else {
+            listView.setAdapter(chosenAdapter);
+            chosenAdapter.completeScan();
+            chosenAdapter.updatePointsViewText();
+        }
+    }
+
+    @Override
+    public void onTabUnselected(TabLayout.Tab tab) {
+
+    }
+
+    @Override
+    public void onTabReselected(TabLayout.Tab tab) {
+        onTabSelected(tab);
+    }
+
+    @Override
+    public void onRefresh() {
+        ((SheetsListViewAdapter) listView.getAdapter()).completeDownload(swipeRefreshLayout);
+    }
+
+    @Override
+    public void onManagerChanged(boolean downloadNecessary) {
+        saveDownloadManagers();
+        for (int i = 0; i < navigationBar.getTabCount(); i++) {
+            navigationBar.getTabAt(i).setText(managers.get(i).getSettings().managerName);
+        }
+        if (downloadNecessary) {
+            swipeRefreshLayout.setRefreshing(true);
+            onRefresh();
+        }
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
@@ -179,6 +196,7 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -191,13 +209,7 @@ public class MainActivity extends AppCompatActivity {
         pointsView = findViewById(R.id.points_view);
         listView = findViewById(R.id.sheets_list_view);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
-        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-            @Override
-            public void onRefresh() {
-                ((SheetsListViewAdapter) listView.getAdapter())
-                        .completeDownload(swipeRefreshLayout);
-            }
-        });
+        swipeRefreshLayout.setOnRefreshListener(this);
 
         preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE);
         managers = loadDownloadManagers();
@@ -209,6 +221,8 @@ public class MainActivity extends AppCompatActivity {
                     linearAlgebraDownloadManager = null,
                     logicDownloadManager = null;
             try {
+                // TODO: Should the file directory depend on the manager name?
+                // Or on the url
                 analysisDownloadManager = new DownloadManager(
                         "Ana",
                         new URL(ANALYSIS_URL),
@@ -272,7 +286,9 @@ public class MainActivity extends AppCompatActivity {
 
         adapters = new ArrayList<>();
         for (DownloadManager manager : managers) {
-            adapters.add(new SheetsListViewAdapter(this, pointsView, manager));
+            SheetsListViewAdapter current = new SheetsListViewAdapter(this, pointsView, manager);
+            current.setListener(this);
+            adapters.add(current);
         }
 
         navigationBar = findViewById(R.id.navigation_bar);
@@ -285,7 +301,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // TODO: The selected tab should not change when switching from portrait to landscape mode
-        navigationBar.addOnTabSelectedListener(onTabSelectedListener);
+        navigationBar.addOnTabSelectedListener(this);
         TabLayout.Tab firstTab = navigationBar.getTabAt(0);
         if (firstTab != null) {
             firstTab.select();
