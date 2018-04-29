@@ -38,53 +38,93 @@ import java.util.regex.Pattern;
 
 // TODO: Rethink variable names and Log tag
 public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
-    private String managerName;
-    private URL directoryURL;
-    private File directoryFile;
-    private Integer maximumPoints;
+    private DownloadManagerSettings settings;
 
     private ArrayList<DownloadDocument> downloadDocuments;
-    private ArrayList<DownloadDocument> localFiles;
+    private ArrayList<DownloadDocument> localDocuments;
 
     private OnListUpdateListener listener = null;
     private SharedPreferences preferences;
     private ProgressDialog progressDialog;
 
     public DownloadManager(String managerName, URL directoryURL,
-                           File directoryFile, Integer maximumPoints) {
-        this.managerName = managerName;
-        this.directoryURL = directoryURL;
-        this.directoryFile = directoryFile;
-        this.maximumPoints = maximumPoints;
-        preferences = MainActivity.getContext().getSharedPreferences(managerName, Context.MODE_PRIVATE);
+                           File directoryFile) {
+        settings = new DownloadManagerSettings(managerName, directoryURL, directoryFile);
+        preferences = MainActivity.getContext().getSharedPreferences(settings.managerName,
+                Context.MODE_PRIVATE);
         downloadDocuments = loadDownloadDocuments();
-        localFiles = new ArrayList<>();
+        localDocuments = new ArrayList<>();
     }
 
-    public DownloadManager(String managerName, URL directoryURL, File directoryFile,
-                           Integer maximumPoints, ArrayList<DownloadDocument> downloadDocuments,
-                           ArrayList<DownloadDocument> localFiles,
-                           OnListUpdateListener listener, SharedPreferences preferences) {
-        this.managerName = managerName;
-        this.directoryURL = directoryURL;
-        this.directoryFile = directoryFile;
-        this.maximumPoints = maximumPoints;
+    public DownloadManager(DownloadManagerSettings settings) {
+        this.settings = settings;
+    }
+
+    public DownloadManager(DownloadManagerSettings settings,
+                           ArrayList<DownloadDocument> downloadDocuments,
+                           ArrayList<DownloadDocument> localDocuments, OnListUpdateListener listener,
+                           SharedPreferences preferences) {
+        this.settings = settings;
         this.downloadDocuments = downloadDocuments;
-        this.localFiles = localFiles;
+        this.localDocuments = localDocuments;
         this.listener = listener;
         this.preferences = preferences;
     }
 
     public DownloadManager copy() {
-        return new DownloadManager(managerName, directoryURL, directoryFile, maximumPoints,
-                downloadDocuments, localFiles, listener, preferences);
+        return new DownloadManager(settings, downloadDocuments, localDocuments, listener,
+                preferences);
     }
+
+    /* Getter and setter functions */
+    public DownloadManagerSettings getSettings() {
+        return settings;
+    }
+
+    public void setMaximumPoints(int value) {
+        Log.d("DownloadManager|" + settings.managerName, "setMaximumPoints:\n" + value);
+        if (value <= 0) {
+            settings.maximumPoints = 10;
+        } else {
+            settings.maximumPoints = value;
+        }
+    }
+
+    public void setSheetRegex(String value) {
+        Log.d("DownloadManager|" + settings.managerName, "setSheetRegex:\n" + value);
+        if (value == null) {
+            settings.sheetRegex = "";
+        } else {
+            settings.sheetRegex = value;
+        }
+    }
+
+    public void setStickiedTitles(ArrayList<String> value) {
+        String dataString = new Gson().toJson(value);
+        Log.d("DownloadManager|" + settings.managerName, "setStickiedTitles:\n" + dataString);
+        if (value == null) {
+            settings.stickiedTitles = new ArrayList<>();
+        } else {
+            settings.stickiedTitles = value;
+        }
+    }
+
+    public void setTitleMap(HashMap<String, String> value) {
+        String dataString = new Gson().toJson(value);
+        Log.d("DownloadManager|" + settings.managerName, "setTitleMap:\n" + dataString);
+        if (value == null) {
+            settings.titleMap = new HashMap<>();
+        } else {
+            settings.titleMap = value;
+        }
+    }
+
 
     /* Simple helper functions */
     public String getPointsText() {
         double sum_points = 0;
         int number_of_sheets = 0;
-        for (DownloadDocument downloadDocument : localFiles) {
+        for (DownloadDocument downloadDocument : localDocuments) {
             if (downloadDocument.getPoints() >= 0) {
                 sum_points += downloadDocument.getPoints();
                 number_of_sheets += 1;
@@ -99,17 +139,17 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
             builder.append(String.format(Locale.GERMAN, "%.1f",
                     sum_points / number_of_sheets));
             builder.append("/");
-            builder.append(String.format(Locale.GERMAN, "%d", maximumPoints));
+            builder.append(String.format(Locale.GERMAN, "%d", settings.maximumPoints));
             builder.append(" ~ ");
             builder.append(String.format(Locale.GERMAN, "%.0f",
-                    100 * sum_points / number_of_sheets / maximumPoints));
+                    100 * sum_points / number_of_sheets / settings.maximumPoints));
             builder.append("%");
         }
         return builder.toString();
     }
 
     private File urlToFile(URL url) {
-        return new File(directoryFile, new File(url.getPath()).getName());
+        return new File(settings.directoryFile, new File(url.getPath()).getName());
     }
 
     private DownloadDocument linkElementToDownloadDocument(Element link)
@@ -120,60 +160,18 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     private String getTitle(URL url, String titleSuggestion) {
-        // This function is supposed to return the title of a DownloadDocument based on the url
-        // and the path to the file.
-        Pattern pattern = Pattern.compile(getSheetRegex());
+        // This function returns the title of a DownloadDocument based on the url and the path to
+        // the file.
+        Pattern pattern = Pattern.compile(settings.sheetRegex);
         Matcher matcher = pattern.matcher(titleSuggestion);
-        HashMap<String, String> titleMap = getTitleMap();
-        if (titleMap.containsKey(titleSuggestion)) {
-            return titleMap.get(titleSuggestion);
+        if (settings.titleMap.containsKey(titleSuggestion)) {
+            return settings.titleMap.get(titleSuggestion);
         } else if (matcher.matches()) {
             Integer number = Integer.valueOf(matcher.group(1));
             return MainActivity.getContext().getString(R.string.sheet_title_format, number);
         } else {
             return titleSuggestion;
         }
-    }
-
-    public String getSheetRegex() {
-        return preferences.getString("sheetRegex", "");
-    }
-
-    public void setSheetRegex(String value) {
-        Log.d("DownloadManager|" + managerName, "setSheetRegex:\n" + value);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putString("sheetRegex", value);
-        editor.apply();
-    }
-
-    public ArrayList<String> getStickiedDocuments() {
-        Type collectionType = new TypeToken<ArrayList<String>>() {
-        }.getType();
-        String dataString = preferences.getString("stickiedDocuments", "[]");
-        return new Gson().fromJson(dataString, collectionType);
-    }
-
-    public void setStickiedDocuments(ArrayList<String> value) {
-        SharedPreferences.Editor editor = preferences.edit();
-        String dataString = new Gson().toJson(value);
-        Log.d("DownloadManager|" + managerName, "setStickiedDocuments:\n" + dataString);
-        editor.putString("stickiedDocuments", dataString);
-        editor.apply();
-    }
-
-    public HashMap<String, String> getTitleMap() {
-        Type collectionType = new TypeToken<HashMap<String, String>>() {
-        }.getType();
-        String dataString = preferences.getString("titleMap", "{}");
-        return new Gson().fromJson(dataString, collectionType);
-    }
-
-    public void setTitleMap(HashMap<String, String> value) {
-        SharedPreferences.Editor editor = preferences.edit();
-        String dataString = new Gson().toJson(value);
-        Log.d("DownloadManager|" + managerName, "setTitleMap:\n" + dataString);
-        editor.putString("titleMap", dataString);
-        editor.apply();
     }
 
     private void sortDownloadDocuments() {
@@ -188,13 +186,12 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         SparseArray<DownloadDocument> sheets = new SparseArray<>();
         ArrayList<DownloadDocument> leftover = new ArrayList<>();
 
-        ArrayList<String> stickiedTitles = getStickiedDocuments();
         Pattern pattern = Pattern.compile(MainActivity.getContext().getString(R.string.sheet_title_regex));
         Matcher matcher;
         for (DownloadDocument dd : downloadDocuments) {
             matcher = pattern.matcher(dd.title);
-            if (stickiedTitles.contains(dd.title)) {
-                stickied.put(stickiedTitles.indexOf(dd.title), dd);
+            if (settings.stickiedTitles.contains(dd.title)) {
+                stickied.put(settings.stickiedTitles.indexOf(dd.title), dd);
             } else if (matcher.matches()) {
                 sheets.put(Integer.parseInt(matcher.group(1)), dd);
             } else {
@@ -232,10 +229,10 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
 
     /* Functions for scanning and downloading */
     public void localScan() {
-        localFiles.clear();
+        localDocuments.clear();
         for (DownloadDocument df : downloadDocuments) {
             if (df.file.exists()) {
-                localFiles.add(df);
+                localDocuments.add(df);
             }
         }
         notifyListener();
@@ -300,7 +297,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     private void updateDownloadDocuments() throws IOException {
         publishProgress(-1);
         downloadDocuments.clear();
-        Document htmlDocument = Jsoup.connect(directoryURL.toString()).get();
+        Document htmlDocument = Jsoup.connect(settings.directoryURL.toString()).get();
         for (Element link : htmlDocument.getElementsByAttributeValueEnding("href", ".pdf")) {
             Log.d("DownloadManager", "Link found: " + link.attr("href"));
             //Create download Document
@@ -316,7 +313,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
                 Log.d("DownloadManager", "Date set: " + lastModified);
 
                 //Set points from local files (if known)
-                for (DownloadDocument ld : localFiles) {
+                for (DownloadDocument ld : localDocuments) {
                     if (ld.equals(dd)) { //Compares urls
                         dd.setPoints(ld.getPoints());
                         Log.d("DownloadManager", "Points set: " + ld.getPoints());
@@ -372,8 +369,8 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
 
     private void notifyListener() {
         if (listener != null) {
-            DownloadDocument[] array = new DownloadDocument[localFiles.size()];
-            listener.onListUpdate(localFiles.toArray(array));
+            DownloadDocument[] array = new DownloadDocument[localDocuments.size()];
+            listener.onListUpdate(localDocuments.toArray(array));
         } else {
             Log.e("DownloadManager", "An OnListUpdateListener should have been set");
         }

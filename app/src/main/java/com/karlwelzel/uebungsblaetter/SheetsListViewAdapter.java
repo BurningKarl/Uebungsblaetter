@@ -34,17 +34,15 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         implements DownloadManager.OnListUpdateListener {
 
     private static final int itemLayoutId = R.layout.sheet_listview_item;
-    private final Context context;
     private final TextView pointsView;
     private DownloadManager manager;
     private SwipeRefreshLayout swipeRefreshLayout = null;
 
     private boolean scanFinished = false;
 
-    public SheetsListViewAdapter(@NonNull final Context context, TextView pointsView,
+    public SheetsListViewAdapter(@NonNull Context context, TextView pointsView,
                                  DownloadManager manager) {
         super(context, itemLayoutId);
-        this.context = context;
         this.pointsView = pointsView;
         this.manager = manager;
         this.manager.setListener(this);
@@ -81,13 +79,13 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                 @Override
                 public boolean onLongClick(View v) {
                     final DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
-                    final EditText pointsInput = new EditText(context);
+                    final EditText pointsInput = new EditText(getContext());
                     pointsInput.setInputType(InputType.TYPE_CLASS_NUMBER |
                             InputType.TYPE_NUMBER_FLAG_DECIMAL);
                     pointsInput.setRawInputType(Configuration.KEYBOARD_12KEY);
                     pointsInput.setMaxEms(2);
                     pointsInput.setGravity(Gravity.CENTER_HORIZONTAL);
-                    AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                    AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
                     builder.setTitle(R.string.points_popup_title);
                     builder.setView(pointsInput);
                     builder.setPositiveButton(android.R.string.ok,
@@ -143,8 +141,8 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         Intent newIntent = new Intent(Intent.ACTION_VIEW);
         Uri uriForFile;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            uriForFile = FileProvider.getUriForFile(context,
-                    context.getApplicationContext().getPackageName() + ".provider", file);
+            uriForFile = FileProvider.getUriForFile(getContext(),
+                    getContext().getApplicationContext().getPackageName() + ".provider", file);
             newIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         } else {
             uriForFile = Uri.fromFile(file);
@@ -152,9 +150,9 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         newIntent.setDataAndType(uriForFile, "application/pdf");
         newIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
-            context.startActivity(newIntent);
+            getContext().startActivity(newIntent);
         } catch (ActivityNotFoundException e) {
-            Toast.makeText(context, "No handler for this type of file.", Toast.LENGTH_LONG).show();
+            Toast.makeText(getContext(), "No handler for this type of file.", Toast.LENGTH_LONG).show();
         }
     }
 

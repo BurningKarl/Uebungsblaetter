@@ -1,7 +1,6 @@
 package com.karlwelzel.uebungsblaetter;
 
 import java.io.File;
-import java.io.Serializable;
 import java.net.URL;
 import java.text.DateFormat;
 import java.util.Date;
@@ -11,7 +10,7 @@ import java.util.Locale;
  * Created by karl on 19.10.17.
  */
 
-public class DownloadDocument implements Serializable {
+public class DownloadDocument {
     public final URL url;
     public final File file;
     public final String title;
