@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name">Übungsblätter</string>
 
+    <string name="points">Punkte</string>
+
     <string name="download_message_index_file">Herunterladen der Übersicht</string>
     <string name="download_message">%s wird heruntergeladen</string>
 

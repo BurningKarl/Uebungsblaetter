@@ -1,25 +1,23 @@
 package com.karlwelzel.uebungsblaetter;
 
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.res.Configuration;
 import android.database.DataSetObserver;
 import android.net.Uri;
 import android.os.Build;
 import android.support.annotation.NonNull;
+import android.support.design.widget.TextInputEditText;
 import android.support.v4.content.FileProvider;
 import android.support.v4.widget.SwipeRefreshLayout;
-import android.text.InputType;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.TwoLineListItem;
@@ -55,82 +53,7 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         });
     }
 
-    @NonNull
-    @Override
-    public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-        TextView titleView, subtitleView;
-        TwoLineListItem textLayout;
-
-        // Check if an existing view is being reused, otherwise inflate the view
-        if (convertView == null) {
-            convertView = LayoutInflater.from(getContext()).inflate(itemLayoutId, parent, false);
-            textLayout = convertView.findViewById(R.id.textLayout);
-            titleView = convertView.findViewById(R.id.titleText);
-            subtitleView = convertView.findViewById(R.id.subtitleText);
-            textLayout.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
-                    Log.d("onClick", "Opened: " + dd.title);
-                    openPDFDocument(dd.file);
-                }
-            });
-            textLayout.setOnLongClickListener(new View.OnLongClickListener() {
-                @Override
-                public boolean onLongClick(View v) {
-                    final DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
-                    final EditText pointsInput = new EditText(getContext());
-                    pointsInput.setInputType(InputType.TYPE_CLASS_NUMBER |
-                            InputType.TYPE_NUMBER_FLAG_DECIMAL);
-                    pointsInput.setRawInputType(Configuration.KEYBOARD_12KEY);
-                    pointsInput.setMaxEms(2);
-                    pointsInput.setGravity(Gravity.CENTER_HORIZONTAL);
-                    AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-                    builder.setTitle(R.string.points_popup_title);
-                    builder.setView(pointsInput);
-                    builder.setPositiveButton(android.R.string.ok,
-                            new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    try {
-                                        String inputText = pointsInput.getText().toString();
-                                        if (inputText.equals(""))
-                                            return;
-                                        dd.setPoints(Double.parseDouble(inputText));
-                                    } catch (NumberFormatException e) {
-                                        Log.d("ListViewAdapter", "Input is not a number -> points deleted");
-                                        dd.setPoints(-1);
-                                    }
-                                    notifyDataSetChanged();
-                                    manager.saveDownloadDocuments();
-                                }
-                            });
-                    builder.show();
-                    return true;
-                }
-            });
-            ViewHolder viewHolder = new ViewHolder(textLayout, titleView, subtitleView);
-            convertView.setTag(R.id.viewholder_tag, viewHolder);
-        } else {
-            // Lookup view for data population
-            ViewHolder viewHolder = (ViewHolder) convertView.getTag(R.id.viewholder_tag);
-            textLayout = viewHolder.textLayout;
-            titleView = viewHolder.titleView;
-            subtitleView = viewHolder.subtitleView;
-        }
-
-        // Get the data item for this position
-        DownloadDocument downloadDocument = getItem(position);
-
-        // Populate the data into the template view using the data object
-        titleView.setText(downloadDocument.title);
-        textLayout.setTag(R.id.file_tag, downloadDocument);
-        subtitleView.setText(downloadDocument.getSubtitle());
-
-        // Return the completed view to render on screen
-        return convertView;
-    }
-
+    /* Helper functions */
     public void updatePointsViewText() {
         pointsView.setText(manager.getPointsText());
     }
@@ -156,6 +79,33 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         }
     }
 
+    private void openDownloadDocumentSettings(final DownloadDocument dd) {
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setTitle(dd.title)
+                .setView(R.layout.dialog_downloaddocument_settings)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(android.R.string.ok,
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                try {
+                                    TextInputEditText newPointsInput = ((Dialog) dialog).findViewById(R.id.new_points_input);
+                                    String inputText = newPointsInput.getText().toString();
+                                    dd.setPoints(Double.parseDouble(inputText));
+                                } catch (NumberFormatException e) {
+                                    Log.d("ListViewAdapter", "Input is not a number -> points deleted");
+                                    dd.setPoints(-1);
+                                }
+                                notifyDataSetChanged();
+                                manager.saveDownloadDocuments();
+                            }
+                        })
+                .create();
+        //Access the elements in R.layout.dialog_downloaddocument_settings here
+        dialog.show();
+    }
+
+    /* DownloadManager interactions */
     public void completeScan() {
         Log.d("ListViewAdapter", "completeScan");
         if (!scanFinished) {
@@ -172,7 +122,6 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         manager.download();
         // This is necessary to call execute a second time.
         manager = manager.copy();
-        Log.d("ListViewAdapter", "New Generator class: " + manager.getClass().toString());
     }
 
     public void onListUpdate(DownloadDocument... files) {
@@ -181,6 +130,58 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
             swipeRefreshLayout.setRefreshing(false);
             swipeRefreshLayout = null;
         }
+    }
+
+    /* The heart of the adapter */
+    @NonNull
+    @Override
+    public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+        TextView titleView, subtitleView;
+        TwoLineListItem textLayout;
+
+        // Check if an existing view is being reused, otherwise inflate the view
+        if (convertView == null) {
+            convertView = LayoutInflater.from(getContext()).inflate(itemLayoutId, parent, false);
+            textLayout = convertView.findViewById(R.id.textLayout);
+            titleView = convertView.findViewById(R.id.titleText);
+            subtitleView = convertView.findViewById(R.id.subtitleText);
+            textLayout.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
+                    Log.d("ListViewAdapter", "Opened: " + dd.title);
+                    openPDFDocument(dd.file);
+                }
+            });
+            textLayout.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
+                    Log.d("ListViewAdapter", "Opened settings: " + dd.title);
+                    openDownloadDocumentSettings(dd);
+                    return true;
+                }
+            });
+            ViewHolder viewHolder = new ViewHolder(textLayout, titleView, subtitleView);
+            convertView.setTag(R.id.viewholder_tag, viewHolder);
+        } else {
+            // Lookup view for data population
+            ViewHolder viewHolder = (ViewHolder) convertView.getTag(R.id.viewholder_tag);
+            textLayout = viewHolder.textLayout;
+            titleView = viewHolder.titleView;
+            subtitleView = viewHolder.subtitleView;
+        }
+
+        // Get the data item for this position
+        DownloadDocument downloadDocument = getItem(position);
+
+        // Populate the data into the template view using the data object
+        titleView.setText(downloadDocument.title);
+        textLayout.setTag(R.id.file_tag, downloadDocument);
+        subtitleView.setText(downloadDocument.getSubtitle());
+
+        // Return the completed view to render on screen
+        return convertView;
     }
 
     private static final class ViewHolder {

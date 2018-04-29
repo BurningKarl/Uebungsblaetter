@@ -41,6 +41,25 @@ import java.util.HashMap;
  * - option to change maximumPoints
  * */
 
+/* TODO: Add new popups for DownloadDocument and DownloadManager
+ * Backend changes:
+ * - use sheetRegex on titleSuggestion and save the ouput as a new field in DownloadDocument
+ * - use titleMap AFTER that on titleSuggestion
+ * - changed the stickied array to a stickied SparseArray<String>
+ *
+ * Popup for DownloadDocument:
+ * - points
+ * - titleSuggestion (disabled, just display the value)
+ * - new title
+ * - stickied index (may not collide with other indexes)
+ *
+ * Popup for DownloadManager:
+ * - name
+ * - maximumPoints
+ * - sheetRegex
+ * - delete the manager (later)
+ */
+
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
@@ -57,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String ANALYSIS_URL = "http://www.math.uni-bonn.de/ag/ana/SoSe2018/V1G2_SS_18";
     private static final String ALGORITHMIC_MATHEMATICS_URL = "http://ins.uni-bonn.de/teaching/vorlesungen/AlmaSS18";
     private static final String LINEAR_ALGEBRA_URL = "http://www.math.uni-bonn.de/people/gjasso/teaching/sose18/v1g4/";
+    private static final String LOGIC_URL = "http://www.math.uni-bonn.de/ag/logik/teaching/2018SS/logik.shtml";
 
     private static Context activityContext;
 
@@ -161,7 +181,8 @@ public class MainActivity extends AppCompatActivity {
         File dirPath = new File(getExternalFilesDir(null), DIRECTORY_NAME);
         DownloadManager analysisDownloadManager = null,
                 algorithmicMathematicsDownloadManager = null,
-                linearAlgebraDownloadManager = null;
+                linearAlgebraDownloadManager = null,
+                logicDownloadManager = null;
         try {
             analysisDownloadManager = new DownloadManager(
                     "Ana",
@@ -175,6 +196,9 @@ public class MainActivity extends AppCompatActivity {
                     "LA",
                     new URL(LINEAR_ALGEBRA_URL),
                     new File(dirPath, "LA"));
+            logicDownloadManager = new DownloadManager("Log",
+                    new URL(LOGIC_URL),
+                    new File(dirPath, "Log"));
 
             analysisDownloadManager.setMaximumPoints(50);
             analysisDownloadManager.setSheetRegex("Übungsblatt (\\d+)");
@@ -197,6 +221,14 @@ public class MainActivity extends AppCompatActivity {
             linearAlgebraDownloadManager.setStickiedTitles(laStickied);
             linearAlgebraDownloadManager.setSheetRegex("Übungszettel (\\d+)[*]?");
 
+            logicDownloadManager.setMaximumPoints(20);
+            HashMap<String, String> logicMap = new HashMap<>();
+            logicMap.put("Skript zur Vorlesung", "Skript");
+            logicDownloadManager.setTitleMap(logicMap);
+            ArrayList<String> logicStickied = new ArrayList<>();
+            logicStickied.add("Skript");
+            logicDownloadManager.setStickiedTitles(logicStickied);
+            logicDownloadManager.setSheetRegex("Serie (\\d+)");
 
         } catch (MalformedURLException e) {
             e.printStackTrace();
@@ -208,6 +240,7 @@ public class MainActivity extends AppCompatActivity {
         managers.add(analysisDownloadManager);
         managers.add(algorithmicMathematicsDownloadManager);
         managers.add(linearAlgebraDownloadManager);
+        managers.add(logicDownloadManager);
 
         saveDownloadManagers();
 
