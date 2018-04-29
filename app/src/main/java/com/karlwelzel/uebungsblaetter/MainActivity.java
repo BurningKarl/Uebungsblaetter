@@ -10,6 +10,9 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -37,26 +40,25 @@ import java.util.HashMap;
  * Additional GUI elements
  * - tab layout to choose the subject                   Done
  * - option to add more subjects
- * - option to change script names and sheet regex
- * - option to change maximumPoints
+ * - option to change script names and sheet regex      Done
+ * - option to change maximumPoints                     Done
  * */
 
 /* TODO: Add new popups for DownloadDocument and DownloadManager
  * Backend changes:
- * - use sheetRegex on titleSuggestion and save the ouput as a new field in DownloadDocument
- * - use titleMap AFTER that on titleSuggestion
- * - changed the stickied array to a stickied SparseArray<String>
+ * - use sheetRegex on titleSuggestion and save the ouput             Done
+ *   as a new field in DownloadDocument
+ * - use titleMap AFTER that on titleSuggestion                       Done
  *
  * Popup for DownloadDocument:
- * - points
- * - titleSuggestion (disabled, just display the value)
- * - new title
- * - stickied index (may not collide with other indexes)
+ * - points                                                           Done
+ * - new title (contains the current title by default)                Done
  *
  * Popup for DownloadManager:
- * - name
- * - maximumPoints
- * - sheetRegex
+ * - name                                                             Not implemented
+ * - maximumPoints                                                    Done
+ * - sheetRegex                                                       Done
+ * - stickiedTitles (as a multiline input, one document per line)
  * - delete the manager (later)
  */
 
@@ -85,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
 
     private SharedPreferences preferences;
 
+    public static View contentView;
     private TextView pointsView;
     private ListView listView;
     private TabLayout navigationBar;
@@ -146,7 +149,6 @@ public class MainActivity extends AppCompatActivity {
     public ArrayList<DownloadManager> loadDownloadManagers() {
         Type collectionType = new TypeToken<ArrayList<DownloadManagerSettings>>() {
         }.getType();
-        //TODO: Choose a default that does not break the app
         String dataString = preferences.getString("managers", "[]");
         Log.d("MainActivity", "loadDownloadManagers:\n" + dataString);
         ArrayList<DownloadManagerSettings> managerSettings = new Gson().fromJson(dataString, collectionType);
@@ -158,6 +160,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.settings_item:
+                SheetsListViewAdapter adapter = (SheetsListViewAdapter) listView.getAdapter();
+                adapter.openDownloadManagerSettings();
+                break;
+            default:
+                break;
+        }
+        return true;
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         activityContext = this;
@@ -165,6 +187,7 @@ public class MainActivity extends AppCompatActivity {
 
         verifyPermissions();
 
+        contentView = findViewById(android.R.id.content);
         pointsView = findViewById(R.id.points_view);
         listView = findViewById(R.id.sheets_list_view);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
@@ -177,75 +200,75 @@ public class MainActivity extends AppCompatActivity {
         });
 
         preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE);
+        managers = loadDownloadManagers();
 
-        File dirPath = new File(getExternalFilesDir(null), DIRECTORY_NAME);
-        DownloadManager analysisDownloadManager = null,
-                algorithmicMathematicsDownloadManager = null,
-                linearAlgebraDownloadManager = null,
-                logicDownloadManager = null;
-        try {
-            analysisDownloadManager = new DownloadManager(
-                    "Ana",
-                    new URL(ANALYSIS_URL),
-                    new File(dirPath, "Ana"));
-            algorithmicMathematicsDownloadManager = new DownloadManager(
-                    "AlMa",
-                    new URL(ALGORITHMIC_MATHEMATICS_URL),
-                    new File(dirPath, "AlMa"));
-            linearAlgebraDownloadManager = new DownloadManager(
-                    "LA",
-                    new URL(LINEAR_ALGEBRA_URL),
-                    new File(dirPath, "LA"));
-            logicDownloadManager = new DownloadManager("Log",
-                    new URL(LOGIC_URL),
-                    new File(dirPath, "Log"));
+        if (managers.isEmpty()) {
+            File dirPath = new File(getExternalFilesDir(null), DIRECTORY_NAME);
+            DownloadManager analysisDownloadManager = null,
+                    algorithmicMathematicsDownloadManager = null,
+                    linearAlgebraDownloadManager = null,
+                    logicDownloadManager = null;
+            try {
+                analysisDownloadManager = new DownloadManager(
+                        "Ana",
+                        new URL(ANALYSIS_URL),
+                        new File(dirPath, "Ana"));
+                algorithmicMathematicsDownloadManager = new DownloadManager(
+                        "AlMa",
+                        new URL(ALGORITHMIC_MATHEMATICS_URL),
+                        new File(dirPath, "AlMa"));
+                linearAlgebraDownloadManager = new DownloadManager(
+                        "LA",
+                        new URL(LINEAR_ALGEBRA_URL),
+                        new File(dirPath, "LA"));
+                logicDownloadManager = new DownloadManager("Log",
+                        new URL(LOGIC_URL),
+                        new File(dirPath, "Log"));
 
-            analysisDownloadManager.setMaximumPoints(50);
-            analysisDownloadManager.setSheetRegex("Übungsblatt (\\d+)");
+                analysisDownloadManager.setMaximumPoints(50);
+                analysisDownloadManager.setSheetRegex("Übungsblatt (\\d+)");
 
-            algorithmicMathematicsDownloadManager.setMaximumPoints(20);
-            HashMap<String, String> almaMap = new HashMap<>();
-            almaMap.put("Alternatives Vorlesungsskript (H. Harbrecht)", "Skript");
-            algorithmicMathematicsDownloadManager.setTitleMap(almaMap);
-            ArrayList<String> almaStickied = new ArrayList<>();
-            almaStickied.add("Skript");
-            algorithmicMathematicsDownloadManager.setStickiedTitles(almaStickied);
-            algorithmicMathematicsDownloadManager.setSheetRegex("Blatt (\\d+)");
+                algorithmicMathematicsDownloadManager.setMaximumPoints(20);
+                HashMap<String, String> almaMap = new HashMap<>();
+                almaMap.put("Alternatives Vorlesungsskript (H. Harbrecht)", "Skript");
+                algorithmicMathematicsDownloadManager.setTitleMap(almaMap);
+                ArrayList<String> almaStickied = new ArrayList<>();
+                almaStickied.add("Skript");
+                algorithmicMathematicsDownloadManager.setStickiedTitles(almaStickied);
+                algorithmicMathematicsDownloadManager.setSheetRegex("Blatt (\\d+)");
 
-            linearAlgebraDownloadManager.setMaximumPoints(16);
-            HashMap<String, String> laMap = new HashMap<>();
-            laMap.put("Herunterladen", "Skript");
-            linearAlgebraDownloadManager.setTitleMap(laMap);
-            ArrayList<String> laStickied = new ArrayList<>();
-            laStickied.add("Skript");
-            linearAlgebraDownloadManager.setStickiedTitles(laStickied);
-            linearAlgebraDownloadManager.setSheetRegex("Übungszettel (\\d+)[*]?");
+                linearAlgebraDownloadManager.setMaximumPoints(16);
+                HashMap<String, String> laMap = new HashMap<>();
+                laMap.put("Herunterladen", "Skript");
+                linearAlgebraDownloadManager.setTitleMap(laMap);
+                ArrayList<String> laStickied = new ArrayList<>();
+                laStickied.add("Skript");
+                linearAlgebraDownloadManager.setStickiedTitles(laStickied);
+                linearAlgebraDownloadManager.setSheetRegex("Übungszettel (\\d+)[*]?");
 
-            logicDownloadManager.setMaximumPoints(20);
-            HashMap<String, String> logicMap = new HashMap<>();
-            logicMap.put("Skript zur Vorlesung", "Skript");
-            logicDownloadManager.setTitleMap(logicMap);
-            ArrayList<String> logicStickied = new ArrayList<>();
-            logicStickied.add("Skript");
-            logicDownloadManager.setStickiedTitles(logicStickied);
-            logicDownloadManager.setSheetRegex("Serie (\\d+)");
+                logicDownloadManager.setMaximumPoints(20);
+                HashMap<String, String> logicMap = new HashMap<>();
+                logicMap.put("Skript zur Vorlesung", "Skript");
+                logicDownloadManager.setTitleMap(logicMap);
+                ArrayList<String> logicStickied = new ArrayList<>();
+                logicStickied.add("Skript");
+                logicDownloadManager.setStickiedTitles(logicStickied);
+                logicDownloadManager.setSheetRegex("Serie (\\d+)");
 
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-            finish();
-            System.exit(0);
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+                finish();
+                System.exit(0);
+            }
+
+            managers = new ArrayList<>();
+            managers.add(analysisDownloadManager);
+            managers.add(algorithmicMathematicsDownloadManager);
+            managers.add(linearAlgebraDownloadManager);
+            managers.add(logicDownloadManager);
+
+            saveDownloadManagers();
         }
-
-        managers = new ArrayList<>();
-        managers.add(analysisDownloadManager);
-        managers.add(algorithmicMathematicsDownloadManager);
-        managers.add(linearAlgebraDownloadManager);
-        managers.add(logicDownloadManager);
-
-        saveDownloadManagers();
-
-        // Already works but is impracticable
-        //managers = loadDownloadManagers();
 
         adapters = new ArrayList<>();
         for (DownloadManager manager : managers) {
@@ -261,6 +284,7 @@ public class MainActivity extends AppCompatActivity {
             navigationBar.addTab(tab);
         }
 
+        // TODO: The selected tab should not change when switching from portrait to landscape mode
         navigationBar.addOnTabSelectedListener(onTabSelectedListener);
         TabLayout.Tab firstTab = navigationBar.getTabAt(0);
         if (firstTab != null) {

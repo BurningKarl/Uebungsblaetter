@@ -1,7 +1,6 @@
 package com.karlwelzel.uebungsblaetter;
 
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -10,6 +9,7 @@ import android.database.DataSetObserver;
 import android.net.Uri;
 import android.os.Build;
 import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
 import android.support.design.widget.TextInputEditText;
 import android.support.v4.content.FileProvider;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -23,6 +23,8 @@ import android.widget.Toast;
 import android.widget.TwoLineListItem;
 
 import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 /**
  * Created by karl on 15.10.17.
@@ -79,30 +81,98 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         }
     }
 
+    // Opens a dialog to edit the DownloadDocument
     private void openDownloadDocumentSettings(final DownloadDocument dd) {
-        AlertDialog dialog = new AlertDialog.Builder(getContext())
+        LayoutInflater inflater = LayoutInflater.from(getContext());
+        View dialogView = inflater.inflate(R.layout.dialog_download_document_settings, null);
+        final TextInputEditText newPointsInput = dialogView.findViewById(R.id.new_points_input);
+        String pointsString = Double.toString(dd.getPoints());
+        Log.d("ListViewAdapter", "Points text is " + pointsString);
+        if (dd.getPoints() >= 0) {
+            newPointsInput.setText(Double.toString(dd.getPoints()));
+        }
+        final TextInputEditText newTitleInput = dialogView.findViewById(R.id.new_title_input);
+        newTitleInput.setText(dd.title);
+        new AlertDialog.Builder(getContext())
                 .setTitle(dd.title)
-                .setView(R.layout.dialog_downloaddocument_settings)
+                .setView(dialogView)
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(android.R.string.ok,
                         new DialogInterface.OnClickListener() {
                             @Override
-                            public void onClick(DialogInterface dialog, int which) {
+                            public void onClick(DialogInterface dialogInterface, int which) {
+                                //points
                                 try {
-                                    TextInputEditText newPointsInput = ((Dialog) dialog).findViewById(R.id.new_points_input);
                                     String inputText = newPointsInput.getText().toString();
                                     dd.setPoints(Double.parseDouble(inputText));
                                 } catch (NumberFormatException e) {
                                     Log.d("ListViewAdapter", "Input is not a number -> points deleted");
                                     dd.setPoints(-1);
                                 }
+                                //titleMap
+                                String newTitle = newTitleInput.getText().toString();
+                                if (!newTitle.equals(dd.title)) {
+                                    dd.title = newTitle;
+                                    manager.getSettings().titleMap.put(dd.titleSuggestion, newTitle);
+                                }
                                 notifyDataSetChanged();
                                 manager.saveDownloadDocuments();
                             }
                         })
-                .create();
-        //Access the elements in R.layout.dialog_downloaddocument_settings here
-        dialog.show();
+                .show();
+    }
+
+    // Opens a dialog to edit the DownloadManager
+    public void openDownloadManagerSettings() {
+        final DownloadManagerSettings settings = manager.getSettings();
+        LayoutInflater inflater = LayoutInflater.from(getContext());
+        View dialogView = inflater.inflate(R.layout.dialog_download_manager_settings, null);
+        final TextInputEditText newNameInput = dialogView.findViewById(R.id.new_name_input);
+        newNameInput.setText(settings.managerName);
+        final TextInputEditText newUrlInput = dialogView.findViewById(R.id.new_url_input);
+        newUrlInput.setText(settings.directoryURL.toString());
+        final TextInputEditText newMaximumPointsInput = dialogView.findViewById(R.id.new_maximum_points_input);
+        newMaximumPointsInput.setText(settings.maximumPoints.toString());
+        final TextInputEditText newSheetRegexInput = dialogView.findViewById(R.id.new_sheet_regex_input);
+        newSheetRegexInput.setText(settings.sheetRegex);
+        new AlertDialog.Builder(getContext())
+                .setTitle(settings.managerName)
+                .setView(dialogView)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(android.R.string.ok,
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int which) {
+                                // TODO: Implement auto refresh if needed (change in url, sheetRegex)
+                                //name
+                                // TODO: Implement name change for DownloadManager
+                                //url
+                                try {
+                                    String inputText = newUrlInput.getText().toString();
+                                    settings.directoryURL = new URL(inputText);
+                                } catch (MalformedURLException e) {
+                                    Log.d("ListViewAdapter", "Input is not a valid url");
+                                    Snackbar.make(MainActivity.contentView,
+                                            R.string.not_a_valid_url, Snackbar.LENGTH_SHORT)
+                                            .show();
+                                }
+                                //maximumPoints
+                                try {
+                                    String inputText = newMaximumPointsInput.getText().toString();
+                                    settings.maximumPoints = Integer.parseInt(inputText);
+                                } catch (NumberFormatException e) {
+                                    Log.d("ListViewAdapter", "Input is not a number");
+                                    Snackbar.make(MainActivity.contentView,
+                                            R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
+                                            .show();
+                                }
+                                //sheetRegex
+                                settings.sheetRegex = newSheetRegexInput.getText().toString();
+                                notifyDataSetChanged();
+                                manager.saveDownloadDocuments();
+                            }
+                        })
+                .show();
     }
 
     /* DownloadManager interactions */

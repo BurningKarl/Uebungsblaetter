@@ -1,16 +1,24 @@
 <resources>
     <string name="app_name">Übungsblätter</string>
 
+    <string name="settings">Einstellungen</string>
     <string name="points">Punkte</string>
-
-    <string name="download_message_index_file">Herunterladen der Übersicht</string>
-    <string name="download_message">%s wird heruntergeladen</string>
+    <string name="name">Name</string>
+    <string name="url">Link</string>
+    <string name="maximum_points">Maximale Punktzahl</string>
+    <string name="sheet_regular_expression">Regulärer Ausdruck für ein Blatt</string>
 
     <string name="sheet_title_format">Blatt %d</string>
     <string name="sheet_title_regex">Blatt (\\d+)</string>
 
-    <string name="points_popup_title">Punkte eingeben</string>
     <string name="points_view_prefix">Punkte: </string>
 
     <string name="add_subject_symbol">+</string>
+
+    <string name="download_message_index_file">Herunterladen der Übersicht</string>
+    <string name="download_message">%s wird heruntergeladen</string>
+
+    <string name="not_a_valid_number">Dies ist keine gültige Zahl</string>
+    <string name="not_a_valid_url">Dies ist keine gültige URL</string>
+
 </resources>

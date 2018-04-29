@@ -58,6 +58,10 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
 
     public DownloadManager(DownloadManagerSettings settings) {
         this.settings = settings;
+        preferences = MainActivity.getContext().getSharedPreferences(settings.managerName,
+                Context.MODE_PRIVATE);
+        downloadDocuments = loadDownloadDocuments();
+        localDocuments = new ArrayList<>();
     }
 
     public DownloadManager(DownloadManagerSettings settings,
@@ -156,22 +160,8 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
             throws MalformedURLException {
         URL linkURL = new URL(link.attr("abs:href"));
         File linkFile = urlToFile(linkURL);
-        return new DownloadDocument(linkURL, linkFile, getTitle(linkURL, link.text()));
-    }
-
-    private String getTitle(URL url, String titleSuggestion) {
-        // This function returns the title of a DownloadDocument based on the url and the path to
-        // the file.
-        Pattern pattern = Pattern.compile(settings.sheetRegex);
-        Matcher matcher = pattern.matcher(titleSuggestion);
-        if (settings.titleMap.containsKey(titleSuggestion)) {
-            return settings.titleMap.get(titleSuggestion);
-        } else if (matcher.matches()) {
-            Integer number = Integer.valueOf(matcher.group(1));
-            return MainActivity.getContext().getString(R.string.sheet_title_format, number);
-        } else {
-            return titleSuggestion;
-        }
+        String titleSuggestion = link.text();
+        return DownloadDocument.fromManager(this, linkURL, linkFile, titleSuggestion);
     }
 
     private void sortDownloadDocuments() {
