@@ -4,6 +4,7 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
+import android.util.Base64;
 import android.util.Log;
 import android.util.SparseArray;
 
@@ -47,8 +48,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     private SharedPreferences preferences;
     private ProgressDialog progressDialog;
 
-    public DownloadManager(String managerName, URL directoryURL,
-                           File directoryFile) {
+    public DownloadManager(String managerName, URL directoryURL, File directoryFile) {
         settings = new DownloadManagerSettings(managerName, directoryURL, directoryFile);
         preferences = MainActivity.getContext().getSharedPreferences(settings.managerName,
                 Context.MODE_PRIVATE);
@@ -66,7 +66,8 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
 
     public DownloadManager(DownloadManagerSettings settings,
                            ArrayList<DownloadDocument> downloadDocuments,
-                           ArrayList<DownloadDocument> localDocuments, OnListUpdateListener listener,
+                           ArrayList<DownloadDocument> localDocuments,
+                           OnListUpdateListener listener,
                            SharedPreferences preferences) {
         this.settings = settings;
         this.downloadDocuments = downloadDocuments;
@@ -145,13 +146,14 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         if (number_of_sheets == 0) {
             builder.append("---");
         } else {
-            builder.append(String.format(Locale.GERMAN, "%.1f",
-                    sum_points / number_of_sheets));
+            double averagePoints = sum_points / number_of_sheets;
+            double percentage = 100 * sum_points / number_of_sheets / settings.maximumPoints;
+
+            builder.append(String.format(Locale.GERMAN, "%.1f", averagePoints));
             builder.append("/");
             builder.append(String.format(Locale.GERMAN, "%d", settings.maximumPoints));
             builder.append(" ~ ");
-            builder.append(String.format(Locale.GERMAN, "%.0f",
-                    100 * sum_points / number_of_sheets / settings.maximumPoints));
+            builder.append(String.format(Locale.GERMAN, "%.0f", percentage));
             builder.append("%");
         }
         return builder.toString();
@@ -161,16 +163,46 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         return new File(settings.directoryFile, new File(url.getPath()).getName());
     }
 
+    private int suggestionToSheetNumber(String titleSuggestion) {
+        Pattern pattern = Pattern.compile(settings.sheetRegex);
+        Matcher matcher = pattern.matcher(titleSuggestion);
+        if (matcher.matches() && matcher.groupCount() >= 1) {
+            return Integer.valueOf(matcher.group(1));
+        } else {
+            return -1;
+        }
+    }
+
+    private String suggestionToTitle(String titleSuggestion, int sheetNumber) {
+        if (settings.titleMap.containsKey(titleSuggestion)) {
+            return settings.titleMap.get(titleSuggestion);
+        } else if (sheetNumber >= 0) {
+            return MainActivity.getContext().getString(R.string.sheet_title_format, sheetNumber);
+        } else {
+            return titleSuggestion;
+        }
+    }
+
     private DownloadDocument linkElementToDownloadDocument(Element link)
             throws MalformedURLException {
         URL linkURL = new URL(link.attr("abs:href"));
         File linkFile = urlToFile(linkURL);
         String titleSuggestion = link.text();
-        return DownloadDocument.fromManager(this, linkURL, linkFile, titleSuggestion);
+        int sheetNumber = suggestionToSheetNumber(titleSuggestion);
+        String title = suggestionToTitle(titleSuggestion, sheetNumber);
+        return new DownloadDocument(linkURL, linkFile, titleSuggestion, title, sheetNumber);
     }
 
     private void sortDownloadDocuments() {
-        // The items in downloadDocuments and their order can be manipulated here
+        /*
+         * The items in downloadDocuments and their order can be manipulated here
+         *
+         * All pdf-files are displayed in this order
+         * 1. All stickied documents by given order
+         * 2. All sheets by number (reversed)
+         * 3. Everything else by date
+         */
+
         Comparator<DownloadDocument> dateComparator = new Comparator<DownloadDocument>() {
             @Override
             public int compare(DownloadDocument doc1, DownloadDocument doc2) {
@@ -180,15 +212,11 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         SparseArray<DownloadDocument> stickied = new SparseArray<>();
         SparseArray<DownloadDocument> sheets = new SparseArray<>();
         ArrayList<DownloadDocument> leftover = new ArrayList<>();
-
-        Pattern pattern = Pattern.compile(MainActivity.getContext().getString(R.string.sheet_title_regex));
-        Matcher matcher;
         for (DownloadDocument dd : downloadDocuments) {
-            matcher = pattern.matcher(dd.title);
             if (settings.stickiedTitles.contains(dd.title)) {
                 stickied.put(settings.stickiedTitles.indexOf(dd.title), dd);
-            } else if (matcher.matches()) {
-                sheets.put(Integer.parseInt(matcher.group(1)), dd);
+            } else if (dd.sheetNumber >= 0) {
+                sheets.put(dd.sheetNumber, dd);
             } else {
                 leftover.add(dd);
             }
@@ -225,9 +253,9 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     /* Functions for scanning and downloading */
     public void localScan() {
         localDocuments.clear();
-        for (DownloadDocument df : downloadDocuments) {
-            if (df.file.exists()) {
-                localDocuments.add(df);
+        for (DownloadDocument dd : downloadDocuments) {
+            if (dd.file.exists()) {
+                localDocuments.add(dd);
             }
         }
         notifyListener();
@@ -272,6 +300,12 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         DownloadDocument currentFile = downloadDocuments.get(index);
         currentFile.file.getParentFile().mkdirs();
         URLConnection connection = currentFile.url.openConnection();
+        //TODO: Remove this line
+        if (currentFile.url.toString().equals("http://www.math.uni-bonn.de/people/gjasso/auth/LA_ss18.pdf")) {
+            String userCredentials = "v1g4:frobenius";
+            String basicAuth = "Basic " + Base64.encodeToString(userCredentials.getBytes(), Base64.NO_WRAP);
+            connection.setRequestProperty("Authorization", basicAuth);
+        }
         connection.connect();
         int lengthOfFile = connection.getContentLength();
         BufferedInputStream input = new BufferedInputStream(connection.getInputStream());
@@ -289,34 +323,43 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         input.close();
     }
 
+    private void addDownloadDocumentByLinkElement(Element link) throws IOException {
+        //Create download Document
+        DownloadDocument dd = linkElementToDownloadDocument(link);
+        HttpURLConnection connection = (HttpURLConnection) dd.url.openConnection();
+        //TODO: Remove this line
+        if (link.attr("href").equals("http://www.math.uni-bonn.de/people/gjasso/auth/LA_ss18.pdf")) {
+            String userCredentials = "v1g4:frobenius";
+            String basicAuth = "Basic " + Base64.encodeToString(userCredentials.getBytes(), Base64.NO_WRAP);
+            connection.setRequestProperty("Authorization", basicAuth);
+        }
+        connection.setRequestMethod("HEAD");
+        Log.d("DownloadManager", "Response code: " + connection.getResponseCode());
+        //Check if it can be downloaded
+        if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+            //Set date from Last-Modified header
+            Date lastModified = new Date(connection.getLastModified());
+            dd.setDate(lastModified);
+
+            //Set points from local files (if known)
+            for (DownloadDocument ld : localDocuments) {
+                if (ld.equals(dd)) { //Compares urls
+                    dd.setPoints(ld.getPoints());
+                    break;
+                }
+            }
+            downloadDocuments.add(dd);
+        }
+
+    }
+
     private void updateDownloadDocuments() throws IOException {
         publishProgress(-1);
         downloadDocuments.clear();
         Document htmlDocument = Jsoup.connect(settings.directoryURL.toString()).get();
         for (Element link : htmlDocument.getElementsByAttributeValueEnding("href", ".pdf")) {
             Log.d("DownloadManager", "Link found: " + link.attr("href"));
-            //Create download Document
-            DownloadDocument dd = linkElementToDownloadDocument(link);
-            HttpURLConnection connection = (HttpURLConnection) dd.url.openConnection();
-            connection.setRequestMethod("HEAD");
-            Log.d("DownloadManager", "Response code: " + connection.getResponseCode());
-            //Check if it can be downloaded
-            if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
-                //Set date from Last-Modified header
-                Date lastModified = new Date(connection.getLastModified());
-                dd.setDate(lastModified);
-                Log.d("DownloadManager", "Date set: " + lastModified);
-
-                //Set points from local files (if known)
-                for (DownloadDocument ld : localDocuments) {
-                    if (ld.equals(dd)) { //Compares urls
-                        dd.setPoints(ld.getPoints());
-                        Log.d("DownloadManager", "Points set: " + ld.getPoints());
-                        break;
-                    }
-                }
-                downloadDocuments.add(dd);
-            }
+            addDownloadDocumentByLinkElement(link);
         }
         sortDownloadDocuments();
         saveDownloadDocuments();

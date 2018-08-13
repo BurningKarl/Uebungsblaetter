@@ -114,7 +114,7 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                 String newTitle = newTitleInput.getText().toString();
                                 if (!newTitle.equals(dd.title)) {
                                     dd.title = newTitle;
-                                    manager.getSettings().titleMap.put(dd.titleSuggestion, newTitle);
+                                    manager.getSettings().titleMap.put(dd.titleId, newTitle);
                                 }
                                 notifyDataSetChanged();
                                 manager.saveDownloadDocuments();

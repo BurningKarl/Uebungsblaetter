@@ -32,11 +32,6 @@ import java.util.HashMap;
  * - have a list of script names                        Done
  * - have a regex for the sheets                        Done
  *
- * All pdf-files are fetched and downloaded from the website then displayed in order
- * 1. All scripts by given order                        Done
- * 2. All sheets by number (reversed)                   Done
- * 3. Everything else by date                           Done
- *
  * Additional GUI elements
  * - tab layout to choose the subject                   Done
  * - option to add more subjects
@@ -46,7 +41,7 @@ import java.util.HashMap;
 
 /* TODO: Add new popups for DownloadDocument and DownloadManager
  * Backend changes:
- * - use sheetRegex on titleSuggestion and save the ouput             Done
+ * - use sheetRegex on titleSuggestion and save the output            Done
  *   as a new field in DownloadDocument
  * - use titleMap AFTER that on titleSuggestion                       Done
  *
@@ -240,6 +235,9 @@ public class MainActivity extends AppCompatActivity implements
                         new File(dirPath, "Log"));
 
                 analysisDownloadManager.setMaximumPoints(50);
+                ArrayList<String> analysisStickied = new ArrayList<>();
+                analysisStickied.add("Skript");
+                analysisDownloadManager.setStickiedTitles(analysisStickied);
                 analysisDownloadManager.setSheetRegex("Übungsblatt (\\d+)");
 
                 algorithmicMathematicsDownloadManager.setMaximumPoints(20);
