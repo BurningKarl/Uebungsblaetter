@@ -27,10 +27,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 /* TODO: Update the GUI to make new features available to the user
- * The DownloadManager should
- * - set the date from the "Last-Modified" header       Done
- * - have a list of script names                        Done
- * - have a regex for the sheets                        Done
  *
  * Additional GUI elements
  * - tab layout to choose the subject                   Done
@@ -40,13 +36,10 @@ import java.util.HashMap;
  * */
 
 /* TODO: Add new popups for DownloadDocument and DownloadManager
- * Backend changes:
- * - use sheetRegex on titleSuggestion and save the output            Done
- *   as a new field in DownloadDocument
- * - use titleMap AFTER that on titleSuggestion                       Done
  *
  * Popup for DownloadDocument:
  * - points                                                           Done
+ * - maximum points
  * - new title (contains the current title by default)                Done
  *
  * Popup for DownloadManager:
@@ -72,6 +65,8 @@ public class MainActivity extends AppCompatActivity implements
     };
     private static final String PREFERENCES_NAME = "__MainActivity";
     private static final String DIRECTORY_NAME = "Uebungsblaetter";
+    private static final String STATE_TAB = "tab";
+
     private static final String ANALYSIS_URL = "http://www.math.uni-bonn.de/ag/ana/SoSe2018/V1G2_SS_18";
     private static final String ALGORITHMIC_MATHEMATICS_URL = "http://ins.uni-bonn.de/teaching/vorlesungen/AlmaSS18";
     private static final String LINEAR_ALGEBRA_URL = "http://www.math.uni-bonn.de/people/gjasso/teaching/sose18/v1g4/";
@@ -115,6 +110,12 @@ public class MainActivity extends AppCompatActivity implements
         SharedPreferences.Editor editor = preferences.edit();
         editor.putString("managers", dataString);
         Log.d("MainActivity", "saveDownloadManagers:\n" + dataString);
+        editor.apply();
+    }
+
+    public void deleteDownloadManagers() {
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.remove("managers");
         editor.apply();
     }
 
@@ -191,10 +192,21 @@ public class MainActivity extends AppCompatActivity implements
         return true;
     }
 
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
+
+        // TODO: Popups should stay open when changing the orientation
+        savedInstanceState.putInt(STATE_TAB, navigationBar.getSelectedTabPosition());
+    }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (savedInstanceState != null) {
+            Log.d("onCreate", "savedInstanceState provided");
+        }
         activityContext = this;
         setContentView(R.layout.activity_main);
 
@@ -216,23 +228,21 @@ public class MainActivity extends AppCompatActivity implements
                     linearAlgebraDownloadManager = null,
                     logicDownloadManager = null;
             try {
-                // TODO: Should the file directory depend on the manager name?
-                // Or on the url
                 analysisDownloadManager = new DownloadManager(
                         "Ana",
                         new URL(ANALYSIS_URL),
-                        new File(dirPath, "Ana"));
+                        dirPath);
                 algorithmicMathematicsDownloadManager = new DownloadManager(
                         "AlMa",
                         new URL(ALGORITHMIC_MATHEMATICS_URL),
-                        new File(dirPath, "AlMa"));
+                        dirPath);
                 linearAlgebraDownloadManager = new DownloadManager(
                         "LA",
                         new URL(LINEAR_ALGEBRA_URL),
-                        new File(dirPath, "LA"));
+                        dirPath);
                 logicDownloadManager = new DownloadManager("Log",
                         new URL(LOGIC_URL),
-                        new File(dirPath, "Log"));
+                        dirPath);
 
                 analysisDownloadManager.setMaximumPoints(50);
                 ArrayList<String> analysisStickied = new ArrayList<>();
@@ -298,11 +308,17 @@ public class MainActivity extends AppCompatActivity implements
             navigationBar.addTab(tab);
         }
 
-        // TODO: The selected tab should not change when switching from portrait to landscape mode
         navigationBar.addOnTabSelectedListener(this);
-        TabLayout.Tab firstTab = navigationBar.getTabAt(0);
-        if (firstTab != null) {
-            firstTab.select();
+        if (savedInstanceState == null) {
+            TabLayout.Tab firstTab = navigationBar.getTabAt(0);
+            if (firstTab != null) {
+                firstTab.select();
+            }
+        } else {
+            int selectedTab = savedInstanceState.getInt(STATE_TAB);
+            navigationBar.getTabAt(selectedTab).select();
         }
+
+        //deleteDownloadManagers();
     }
 }

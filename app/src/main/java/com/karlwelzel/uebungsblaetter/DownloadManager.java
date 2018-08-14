@@ -160,7 +160,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     private File urlToFile(URL url) {
-        return new File(settings.directoryFile, new File(url.getPath()).getName());
+        return new File(settings.getDirectory(), new File(url.getPath()).getName());
     }
 
     private int suggestionToSheetNumber(String titleSuggestion) {
@@ -246,7 +246,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         Type collectionType = new TypeToken<ArrayList<DownloadDocument>>() {
         }.getType();
         String dataString = preferences.getString("documents", "[]");
-        Log.d("DownloadManager", "loadDownloadDocuments:\n" + dataString);
+        //Log.d("DownloadManager", "loadDownloadDocuments:\n" + dataString);
         return new Gson().fromJson(dataString, collectionType);
     }
 
