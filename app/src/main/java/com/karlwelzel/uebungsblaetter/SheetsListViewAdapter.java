@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.DataSetObserver;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
@@ -88,7 +89,7 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         View dialogView = inflater.inflate(R.layout.dialog_download_document_settings, null);
         final TextInputEditText newPointsInput = dialogView.findViewById(R.id.new_points_input);
         String pointsString = Double.toString(dd.getPoints());
-        Log.d("ListViewAdapter", "Points text is " + pointsString);
+        Log.d("SheetsListViewAdapter", "Points text is " + pointsString);
         if (dd.getPoints() >= 0) {
             newPointsInput.setText(Double.toString(dd.getPoints()));
         }
@@ -107,14 +108,14 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                     String inputText = newPointsInput.getText().toString();
                                     dd.setPoints(Double.parseDouble(inputText));
                                 } catch (NumberFormatException e) {
-                                    Log.d("ListViewAdapter", "Input is not a number -> points deleted");
+                                    Log.d("SheetsListViewAdapter", "Input is not a number -> points deleted");
                                     dd.setPoints(-1);
                                 }
                                 //titleMap
                                 String newTitle = newTitleInput.getText().toString();
                                 if (!newTitle.equals(dd.title)) {
                                     dd.title = newTitle;
-                                    manager.getSettings().titleMap.put(dd.titleId, newTitle);
+                                    manager.getTitleMap().put(dd.titleId, newTitle);
                                 }
                                 notifyDataSetChanged();
                                 manager.saveDownloadDocuments();
@@ -125,19 +126,18 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
 
     // Opens a dialog to edit the DownloadManager
     public void openDownloadManagerSettings() {
-        final DownloadManagerSettings settings = manager.getSettings();
         LayoutInflater inflater = LayoutInflater.from(getContext());
         View dialogView = inflater.inflate(R.layout.dialog_download_manager_settings, null);
         final TextInputEditText newNameInput = dialogView.findViewById(R.id.new_name_input);
-        newNameInput.setText(settings.managerName);
+        newNameInput.setText(manager.getName());
         final TextInputEditText newUrlInput = dialogView.findViewById(R.id.new_url_input);
-        newUrlInput.setText(settings.directoryURL.toString());
+        newUrlInput.setText(manager.getDirectoryURL().toString());
         final TextInputEditText newMaximumPointsInput = dialogView.findViewById(R.id.new_maximum_points_input);
-        newMaximumPointsInput.setText(settings.maximumPoints.toString());
+        newMaximumPointsInput.setText(Integer.toString(manager.getMaximumPoints()));
         final TextInputEditText newSheetRegexInput = dialogView.findViewById(R.id.new_sheet_regex_input);
-        newSheetRegexInput.setText(settings.sheetRegex);
+        newSheetRegexInput.setText(manager.getSheetRegex());
         new AlertDialog.Builder(getContext())
-                .setTitle(settings.managerName)
+                .setTitle(manager.getName())
                 .setView(dialogView)
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(android.R.string.ok,
@@ -147,9 +147,9 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                 //name
                                 boolean nameChanged = false;
                                 String newName = newNameInput.getText().toString();
-                                if (!newName.equals(settings.managerName)) {
-                                    settings.managerName = newName;
-                                    manager.updatePreferences();
+                                if (!newName.equals(manager.getName())) {
+                                    Log.d("SheetsListViewAdapter", "Name changed");
+                                    manager.setName(newName);
                                     nameChanged = true;
                                 }
                                 //url
@@ -157,12 +157,13 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                 try {
                                     String inputText = newUrlInput.getText().toString();
                                     URL newUrl = new URL(inputText);
-                                    if (!newUrl.equals(settings.directoryURL)) {
-                                        settings.directoryURL = newUrl;
+                                    if (!newUrl.equals(manager.getDirectoryURL())) {
+                                        Log.d("SheetsListViewAdapter", "URL changed");
+                                        manager.setDirectoryURL(newUrl);
                                         urlChanged = true;
                                     }
                                 } catch (MalformedURLException e) {
-                                    Log.d("ListViewAdapter", "Input is not a valid url");
+                                    Log.d("SheetsListViewAdapter", "Input is not a valid url");
                                     Snackbar.make(MainActivity.contentView,
                                             R.string.not_a_valid_url, Snackbar.LENGTH_SHORT)
                                             .show();
@@ -172,30 +173,30 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                 try {
                                     String inputText = newMaximumPointsInput.getText().toString();
                                     int newMaximumPoints = Integer.parseInt(inputText);
-                                    if (newMaximumPoints != settings.maximumPoints) {
-                                        settings.maximumPoints = newMaximumPoints;
+                                    if (newMaximumPoints != manager.getMaximumPoints()) {
+                                        Log.d("SheetsListViewAdapter", "Maximum points changed");
+                                        manager.setMaximumPoints(newMaximumPoints);
                                         maximumPointsChanged = true;
                                     }
                                 } catch (NumberFormatException e) {
-                                    Log.d("ListViewAdapter", "Input is not a number");
+                                    Log.d("SheetsListViewAdapter", "Input is not a number");
                                     Snackbar.make(MainActivity.contentView,
                                             R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
                                             .show();
                                 }
                                 //sheetRegex
-                                // TODO: Changing sheetRegex should change the names without an internet connection
                                 boolean sheetRegexChanged = false;
                                 String newSheetRegex = newSheetRegexInput.getText().toString();
-                                if (!newSheetRegex.equals(settings.sheetRegex)) {
-                                    settings.sheetRegex = newSheetRegex;
+                                if (!newSheetRegex.equals(manager.getSheetRegex())) {
+                                    Log.d("SheetsListViewAdapter", "SheetRegex changed");
+                                    manager.setSheetRegex(newSheetRegex);
                                     sheetRegexChanged = true;
                                 }
 
-                                if (urlChanged || sheetRegexChanged || nameChanged) {
+                                if (urlChanged) {
                                     notifyListener(true);
-                                } else if (maximumPointsChanged) {
+                                } else if (maximumPointsChanged || sheetRegexChanged || nameChanged) {
                                     notifyListener(false);
-                                    notifyDataSetChanged();
                                 }
                             }
                         })
@@ -204,7 +205,7 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
 
     /* DownloadManager interactions */
     public void completeScan() {
-        Log.d("ListViewAdapter", "completeScan");
+        Log.d("SheetsListViewAdapter", "completeScan");
         if (!scanFinished) {
             clear();
             manager.localScan();
@@ -213,12 +214,17 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
     }
 
     public void completeDownload(SwipeRefreshLayout layout) {
-        Log.d("ListViewAdapter", "completeDownload");
+        Log.d("SheetsListViewAdapter", "completeDownload");
         swipeRefreshLayout = layout;
         clear();
         manager.download();
-        // This is necessary to call execute a second time.
-        manager = manager.copy();
+    }
+
+    public void completeDownloadOffline(SwipeRefreshLayout layout) {
+        Log.d("SheetsListViewAdapter", "completeDownloadOffline");
+        swipeRefreshLayout = layout;
+        clear();
+        manager.downloadOffline();
     }
 
     public void onListUpdate(DownloadDocument... files) {
@@ -226,6 +232,11 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setRefreshing(false);
             swipeRefreshLayout = null;
+        }
+        Log.d("SheetsListViewAdapter", "manager status " + manager.getStatus().name());
+        if (!manager.getStatus().equals(AsyncTask.Status.PENDING)) {
+            // This is necessary to call execute a second time.
+            manager = manager.copy();
         }
     }
 
@@ -246,7 +257,7 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                 @Override
                 public void onClick(View v) {
                     DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
-                    Log.d("ListViewAdapter", "Opened: " + dd.title);
+                    Log.d("SheetsListViewAdapter", "Opened: " + dd.title);
                     openPDFDocument(dd.file);
                 }
             });
@@ -254,7 +265,7 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                 @Override
                 public boolean onLongClick(View v) {
                     DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
-                    Log.d("ListViewAdapter", "Opened settings: " + dd.title);
+                    Log.d("SheetsListViewAdapter", "Opened settings: " + dd.title);
                     openDownloadDocumentSettings(dd);
                     return true;
                 }

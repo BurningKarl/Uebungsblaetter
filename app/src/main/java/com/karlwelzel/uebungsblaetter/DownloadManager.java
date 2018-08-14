@@ -4,6 +4,7 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
+import android.support.design.widget.Snackbar;
 import android.util.Base64;
 import android.util.Log;
 import android.util.SparseArray;
@@ -49,16 +50,18 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     private ProgressDialog progressDialog;
 
     public DownloadManager(String managerName, URL directoryURL, File directoryFile) {
+        //Log.d("DownloadManager", "constructor 1 "+managerName+"|"+directoryURL.toString()+"|"+directoryFile.toString());
         settings = new DownloadManagerSettings(managerName, directoryURL, directoryFile);
-        preferences = MainActivity.getContext().getSharedPreferences(settings.managerName,
+        preferences = MainActivity.getContext().getSharedPreferences(getManagerID(),
                 Context.MODE_PRIVATE);
         downloadDocuments = loadDownloadDocuments();
         localDocuments = new ArrayList<>();
     }
 
     public DownloadManager(DownloadManagerSettings settings) {
+        //Log.d("DownloadManager", "constructor 2 "+settings.getName()+"|"+settings.getDirectoryURL().toString()+"|"+settings.getDirectory().toString());
         this.settings = settings;
-        preferences = MainActivity.getContext().getSharedPreferences(settings.managerName,
+        preferences = MainActivity.getContext().getSharedPreferences(getManagerID(),
                 Context.MODE_PRIVATE);
         downloadDocuments = loadDownloadDocuments();
         localDocuments = new ArrayList<>();
@@ -69,6 +72,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
                            ArrayList<DownloadDocument> localDocuments,
                            OnListUpdateListener listener,
                            SharedPreferences preferences) {
+        //Log.d("DownloadManager", "constructor 3 "+settings.getName()+"|"+settings.getDirectoryURL().toString()+"|"+settings.getDirectory().toString());
         this.settings = settings;
         this.downloadDocuments = downloadDocuments;
         this.localDocuments = localDocuments;
@@ -82,7 +86,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     public void updatePreferences() {
-        preferences = MainActivity.getContext().getSharedPreferences(settings.managerName,
+        preferences = MainActivity.getContext().getSharedPreferences(getManagerID(),
                 Context.MODE_PRIVATE);
     }
 
@@ -91,8 +95,43 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         return settings;
     }
 
+    public String getName() {
+        return settings.getName();
+    }
+
+    public void setName(String name) {
+        Log.d("DownloadManager|" + getName(), "setMaximumPoints:\n" + name);
+        settings.setName(name);
+    }
+
+    public URL getDirectoryURL() {
+        return settings.getDirectoryURL();
+    }
+
+    // When setting a new url, downloadDocuments is loaded from preferences
+    public void setDirectoryURL(URL directoryURL) {
+        Log.d("DownloadManager|" + getName(), "setMaximumPoints:\n" + directoryURL.toString());
+        if (!settings.getDirectoryURL().equals(directoryURL)) {
+            settings.setDirectoryURL(directoryURL);
+            updatePreferences();
+            downloadDocuments = loadDownloadDocuments();
+        }
+    }
+
+    public File getDirectory() {
+        return settings.getDirectory();
+    }
+
+    public String getManagerID() {
+        return settings.getManagerID();
+    }
+
+    public int getMaximumPoints() {
+        return settings.maximumPoints;
+    }
+
     public void setMaximumPoints(int value) {
-        Log.d("DownloadManager|" + settings.managerName, "setMaximumPoints:\n" + value);
+        Log.d("DownloadManager|" + getName(), "setMaximumPoints:\n" + value);
         if (value <= 0) {
             settings.maximumPoints = 10;
         } else {
@@ -100,8 +139,12 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         }
     }
 
+    public String getSheetRegex() {
+        return settings.sheetRegex;
+    }
+
     public void setSheetRegex(String value) {
-        Log.d("DownloadManager|" + settings.managerName, "setSheetRegex:\n" + value);
+        Log.d("DownloadManager|" + getName(), "setSheetRegex:\n" + value);
         if (value == null) {
             settings.sheetRegex = "";
         } else {
@@ -109,9 +152,13 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         }
     }
 
+    public ArrayList<String> getStickiedTitles() {
+        return settings.stickiedTitles;
+    }
+
     public void setStickiedTitles(ArrayList<String> value) {
         String dataString = new Gson().toJson(value);
-        Log.d("DownloadManager|" + settings.managerName, "setStickiedTitles:\n" + dataString);
+        Log.d("DownloadManager|" + getName(), "setStickiedTitles:\n" + dataString);
         if (value == null) {
             settings.stickiedTitles = new ArrayList<>();
         } else {
@@ -119,9 +166,13 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         }
     }
 
+    public HashMap<String, String> getTitleMap() {
+        return settings.titleMap;
+    }
+
     public void setTitleMap(HashMap<String, String> value) {
         String dataString = new Gson().toJson(value);
-        Log.d("DownloadManager|" + settings.managerName, "setTitleMap:\n" + dataString);
+        Log.d("DownloadManager|" + getName(), "setTitleMap:\n" + dataString);
         if (value == null) {
             settings.titleMap = new HashMap<>();
         } else {
@@ -160,11 +211,11 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     private File urlToFile(URL url) {
-        return new File(settings.getDirectory(), new File(url.getPath()).getName());
+        return new File(getDirectory(), new File(url.getPath()).getName());
     }
 
     private int suggestionToSheetNumber(String titleSuggestion) {
-        Pattern pattern = Pattern.compile(settings.sheetRegex);
+        Pattern pattern = Pattern.compile(getSheetRegex());
         Matcher matcher = pattern.matcher(titleSuggestion);
         if (matcher.matches() && matcher.groupCount() >= 1) {
             return Integer.valueOf(matcher.group(1));
@@ -174,8 +225,8 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     private String suggestionToTitle(String titleSuggestion, int sheetNumber) {
-        if (settings.titleMap.containsKey(titleSuggestion)) {
-            return settings.titleMap.get(titleSuggestion);
+        if (getTitleMap().containsKey(titleSuggestion)) {
+            return getTitleMap().get(titleSuggestion);
         } else if (sheetNumber >= 0) {
             return MainActivity.getContext().getString(R.string.sheet_title_format, sheetNumber);
         } else {
@@ -183,14 +234,17 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         }
     }
 
-    private DownloadDocument linkElementToDownloadDocument(Element link)
-            throws MalformedURLException {
-        URL linkURL = new URL(link.attr("abs:href"));
+    private DownloadDocument urlToDownloadDocument(URL linkURL, String titleSuggestion) {
         File linkFile = urlToFile(linkURL);
-        String titleSuggestion = link.text();
         int sheetNumber = suggestionToSheetNumber(titleSuggestion);
         String title = suggestionToTitle(titleSuggestion, sheetNumber);
         return new DownloadDocument(linkURL, linkFile, titleSuggestion, title, sheetNumber);
+    }
+
+    private DownloadDocument linkElementToDownloadDocument(Element link)
+            throws MalformedURLException {
+        URL linkURL = new URL(link.attr("abs:href"));
+        return urlToDownloadDocument(linkURL, link.text());
     }
 
     private void sortDownloadDocuments() {
@@ -213,8 +267,8 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         SparseArray<DownloadDocument> sheets = new SparseArray<>();
         ArrayList<DownloadDocument> leftover = new ArrayList<>();
         for (DownloadDocument dd : downloadDocuments) {
-            if (settings.stickiedTitles.contains(dd.title)) {
-                stickied.put(settings.stickiedTitles.indexOf(dd.title), dd);
+            if (getStickiedTitles().contains(dd.title)) {
+                stickied.put(getStickiedTitles().indexOf(dd.title), dd);
             } else if (dd.sheetNumber >= 0) {
                 sheets.put(dd.sheetNumber, dd);
             } else {
@@ -259,6 +313,26 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
             }
         }
         notifyListener();
+    }
+
+    private void updateDownloadDocumentsOffline() {
+        ArrayList<DownloadDocument> oldDocuments = new ArrayList<>(downloadDocuments);
+        downloadDocuments.clear();
+        for (DownloadDocument oldDD : oldDocuments) {
+            DownloadDocument dd = urlToDownloadDocument(oldDD.url, oldDD.titleId);
+            dd.setDate(oldDD.getDate());
+            dd.setPoints(oldDD.getPoints());
+            downloadDocuments.add(dd);
+        }
+        sortDownloadDocuments();
+        saveDownloadDocuments();
+    }
+
+    // Does the same as download but without actually updating the documents
+    // This is useful after changing sheetRegex or stickiedTitle
+    public void downloadOffline() {
+        updateDownloadDocumentsOffline();
+        localScan();
     }
 
     public void download() {
@@ -356,7 +430,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     private void updateDownloadDocuments() throws IOException {
         publishProgress(-1);
         downloadDocuments.clear();
-        Document htmlDocument = Jsoup.connect(settings.directoryURL.toString()).get();
+        Document htmlDocument = Jsoup.connect(getDirectoryURL().toString()).get();
         for (Element link : htmlDocument.getElementsByAttributeValueEnding("href", ".pdf")) {
             Log.d("DownloadManager", "Link found: " + link.attr("href"));
             addDownloadDocumentByLinkElement(link);
@@ -370,25 +444,36 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         // Get a list of files from directoryURL first, update downloadFiles
         // and then download all of the them.
         ArrayList<DownloadDocument> oldDocuments = new ArrayList<>(downloadDocuments);
+        boolean indexDownloadSuccessful = true;
         try {
             updateDownloadDocuments();
-            DownloadDocument current;
-            for (int i = 0; i < downloadDocuments.size(); i++) {
-                current = downloadDocuments.get(i);
-                if (!current.file.exists() ||
-                        current.getDate() != null &&
-                        new Date(current.file.lastModified()).before(current.getDate())) {
-                    downloadDocument(i);
-                }
-            }
         } catch (IOException e) {
-            Log.d("DownloadManager", "Download failed. Skipping the rest");
-            e.printStackTrace();
-            // Add all oldDocuments that could not be downloaded
-            for (DownloadDocument dd : oldDocuments) {
-                if (!downloadDocuments.contains(dd)) {
-                    downloadDocuments.add(dd);
+            Log.d("DownloadManager", "Downloading the index file failed. Keep the old documents");
+            indexDownloadSuccessful = false;
+            downloadDocuments = oldDocuments;
+            updateDownloadDocumentsOffline();
+            Snackbar.make(MainActivity.contentView,
+                    R.string.download_failed_index_file, Snackbar.LENGTH_SHORT)
+                    .show();
+        }
+        if (indexDownloadSuccessful) {
+            try {
+                DownloadDocument current;
+                for (int i = 0; i < downloadDocuments.size(); i++) {
+                    current = downloadDocuments.get(i);
+                    if (!current.file.exists() ||
+                            current.getDate() != null &&
+                                    new Date(current.file.lastModified()).before(current.getDate())) {
+                        downloadDocument(i);
+                    }
                 }
+            } catch (IOException e) {
+                Log.d("DownloadManager", "Download failed. Skipping the rest");
+                e.printStackTrace();
+                Snackbar.make(MainActivity.contentView,
+                        R.string.download_failed, Snackbar.LENGTH_SHORT)
+                        .show();
+
             }
         }
         return null;

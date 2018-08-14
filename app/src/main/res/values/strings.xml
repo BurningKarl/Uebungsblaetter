@@ -20,5 +20,7 @@
 
     <string name="not_a_valid_number">Dies ist keine gültige Zahl</string>
     <string name="not_a_valid_url">Dies ist keine gültige URL</string>
+    <string name="download_failed_index_file">Das Herunterladen der Übersicht ist fehlgeschlagen</string>
+    <string name="download_failed">Das Herunterladen der Dokumente ist fehlgeschlagen</string>
 
 </resources>

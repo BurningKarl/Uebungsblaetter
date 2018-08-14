@@ -164,11 +164,14 @@ public class MainActivity extends AppCompatActivity implements
     public void onManagerChanged(boolean downloadNecessary) {
         saveDownloadManagers();
         for (int i = 0; i < navigationBar.getTabCount(); i++) {
-            navigationBar.getTabAt(i).setText(managers.get(i).getSettings().managerName);
+            navigationBar.getTabAt(i).setText(managers.get(i).getName());
         }
         if (downloadNecessary) {
             swipeRefreshLayout.setRefreshing(true);
             onRefresh();
+        } else {
+            swipeRefreshLayout.setRefreshing(true);
+            ((SheetsListViewAdapter) listView.getAdapter()).completeDownloadOffline(swipeRefreshLayout);
         }
     }
 
@@ -303,7 +306,7 @@ public class MainActivity extends AppCompatActivity implements
 
         for (int i = 0; i < managers.size(); i++) {
             TabLayout.Tab tab = navigationBar.newTab();
-            tab.setText(managers.get(i).getSettings().managerName);
+            tab.setText(managers.get(i).getName());
             tab.setTag(adapters.get(i));
             navigationBar.addTab(tab);
         }
