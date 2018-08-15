@@ -3,10 +3,11 @@
 
     <string name="settings">Einstellungen</string>
     <string name="points">Punkte</string>
+    <string name="maximum_points">Maximale Punktzahl</string>
     <string name="name">Name</string>
     <string name="url">Link</string>
-    <string name="maximum_points">Maximale Punktzahl</string>
     <string name="sheet_regular_expression">Regulärer Ausdruck für ein Blatt</string>
+    <string name="stickied_titles">Oben angeheftete Dokumente</string>
 
     <string name="sheet_title_format">Blatt %d</string>
     <string name="sheet_title_regex">Blatt (\\d+)</string>

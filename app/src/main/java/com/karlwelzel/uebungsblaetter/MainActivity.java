@@ -26,30 +26,6 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-/* TODO: Update the GUI to make new features available to the user
- *
- * Additional GUI elements
- * - tab layout to choose the subject                   Done
- * - option to add more subjects
- * - option to change script names and sheet regex      Done
- * - option to change maximumPoints                     Done
- * */
-
-/* TODO: Add new popups for DownloadDocument and DownloadManager
- *
- * Popup for DownloadDocument:
- * - points                                                           Done
- * - maximum points
- * - new title (contains the current title by default)                Done
- *
- * Popup for DownloadManager:
- * - name                                                             Done
- * - maximumPoints                                                    Done
- * - sheetRegex                                                       Done
- * - stickiedTitles (as a multiline input, one document per line)
- * - delete the manager (later)
- */
-
 public class MainActivity extends AppCompatActivity implements
         SheetsListViewAdapter.OnManagerChangedListener, TabLayout.OnTabSelectedListener,
         SwipeRefreshLayout.OnRefreshListener {

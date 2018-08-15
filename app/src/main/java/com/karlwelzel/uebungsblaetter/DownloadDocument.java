@@ -18,13 +18,16 @@ public class DownloadDocument {
     public int sheetNumber; // < 0: no sheet, >= 0: number of the sheet
     private Date date = null;
     private double points = -1;
+    private int maximumPoints;
 
-    public DownloadDocument(URL url, File file, String titleId, String title, int sheetNumber) {
+    public DownloadDocument(URL url, File file, String titleId, String title, int sheetNumber,
+                            int maximumPoints) {
         this.url = url;
         this.file = file;
         this.titleId = titleId;
         this.title = title;
         this.sheetNumber = sheetNumber;
+        this.maximumPoints = maximumPoints;
     }
 
     public boolean equals(Object o) {
@@ -51,6 +54,14 @@ public class DownloadDocument {
         this.points = points;
     }
 
+    public int getMaximumPoints() {
+        return maximumPoints;
+    }
+
+    public void setMaximumPoints(int maximumPoints) {
+        this.maximumPoints = maximumPoints;
+    }
+
     public String getSubtitle() {
         StringBuilder builder = new StringBuilder();
         if (getDate() != null) {
@@ -60,6 +71,8 @@ public class DownloadDocument {
             if (getPoints() >= 0) {
                 builder.append(" - ");
                 builder.append(String.format(Locale.GERMAN, "%.1f", getPoints()));
+                builder.append("/");
+                builder.append(String.format(Locale.GERMAN, "%d", getMaximumPoints()));
                 builder.append(" Punkte");
             }
         }

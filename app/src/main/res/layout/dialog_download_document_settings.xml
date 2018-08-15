@@ -21,7 +21,7 @@
             android:layout_weight="1">
 
             <android.support.design.widget.TextInputEditText
-                android:id="@+id/new_title_input"
+                android:id="@+id/title_input"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/name"
@@ -36,11 +36,26 @@
             android:layout_weight="1">
 
             <android.support.design.widget.TextInputEditText
-                android:id="@+id/new_points_input"
+                android:id="@+id/points_input"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/points"
                 android:inputType="numberDecimal"
+                android:maxLines="1"
+                android:textSize="16sp" />
+        </android.support.design.widget.TextInputLayout>
+
+        <android.support.design.widget.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <android.support.design.widget.TextInputEditText
+                android:id="@+id/maximum_points_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/maximum_points"
+                android:inputType="number"
                 android:maxLines="1"
                 android:textSize="16sp" />
         </android.support.design.widget.TextInputLayout>

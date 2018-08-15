@@ -183,11 +183,13 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
 
     /* Simple helper functions */
     public String getPointsText() {
-        double sum_points = 0;
+        double total_points = 0;
+        double total_maximum_points = 0;
         int number_of_sheets = 0;
-        for (DownloadDocument downloadDocument : localDocuments) {
-            if (downloadDocument.getPoints() >= 0) {
-                sum_points += downloadDocument.getPoints();
+        for (DownloadDocument dd : localDocuments) {
+            if (dd.getPoints() >= 0) {
+                total_points += dd.getPoints();
+                total_maximum_points += dd.getMaximumPoints();
                 number_of_sheets += 1;
             }
         }
@@ -197,12 +199,13 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         if (number_of_sheets == 0) {
             builder.append("---");
         } else {
-            double averagePoints = sum_points / number_of_sheets;
-            double percentage = 100 * sum_points / number_of_sheets / settings.maximumPoints;
+            double averagePoints = total_points / number_of_sheets;
+            double averageMaximumPoints = total_maximum_points / (double) number_of_sheets;
+            double percentage = 100 * total_points / total_maximum_points;
 
             builder.append(String.format(Locale.GERMAN, "%.1f", averagePoints));
             builder.append("/");
-            builder.append(String.format(Locale.GERMAN, "%d", settings.maximumPoints));
+            builder.append(String.format(Locale.GERMAN, "%.0f", averageMaximumPoints));
             builder.append(" ~ ");
             builder.append(String.format(Locale.GERMAN, "%.0f", percentage));
             builder.append("%");
@@ -238,7 +241,8 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         File linkFile = urlToFile(linkURL);
         int sheetNumber = suggestionToSheetNumber(titleSuggestion);
         String title = suggestionToTitle(titleSuggestion, sheetNumber);
-        return new DownloadDocument(linkURL, linkFile, titleSuggestion, title, sheetNumber);
+        return new DownloadDocument(linkURL, linkFile, titleSuggestion, title, sheetNumber,
+                getMaximumPoints());
     }
 
     private DownloadDocument linkElementToDownloadDocument(Element link)
@@ -300,7 +304,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         Type collectionType = new TypeToken<ArrayList<DownloadDocument>>() {
         }.getType();
         String dataString = preferences.getString("documents", "[]");
-        //Log.d("DownloadManager", "loadDownloadDocuments:\n" + dataString);
+        Log.d("DownloadManager", "loadDownloadDocuments:\n" + dataString);
         return new Gson().fromJson(dataString, collectionType);
     }
 
@@ -322,6 +326,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
             DownloadDocument dd = urlToDownloadDocument(oldDD.url, oldDD.titleId);
             dd.setDate(oldDD.getDate());
             dd.setPoints(oldDD.getPoints());
+            dd.setMaximumPoints(oldDD.getMaximumPoints());
             downloadDocuments.add(dd);
         }
         sortDownloadDocuments();
@@ -401,7 +406,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         //Create download Document
         DownloadDocument dd = linkElementToDownloadDocument(link);
         HttpURLConnection connection = (HttpURLConnection) dd.url.openConnection();
-        //TODO: Remove this line
+        //TODO: Handle documents with authentication more thoughtfully
         if (link.attr("href").equals("http://www.math.uni-bonn.de/people/gjasso/auth/LA_ss18.pdf")) {
             String userCredentials = "v1g4:frobenius";
             String basicAuth = "Basic " + Base64.encodeToString(userCredentials.getBytes(), Base64.NO_WRAP);
@@ -419,6 +424,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
             for (DownloadDocument ld : localDocuments) {
                 if (ld.equals(dd)) { //Compares urls
                     dd.setPoints(ld.getPoints());
+                    dd.setMaximumPoints(ld.getMaximumPoints());
                     break;
                 }
             }

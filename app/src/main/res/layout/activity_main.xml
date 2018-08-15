@@ -9,7 +9,7 @@
 
     <android.support.constraint.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize">
+        android:layout_height="?android:attr/actionBarSize">
 
         <android.support.design.widget.TabLayout
             android:id="@+id/navigation_bar"
@@ -22,9 +22,10 @@
 
         </android.support.design.widget.TabLayout>
 
+        <!-- TODO: Adding more subjects / DownloadManagers -->
         <Button
             android:id="@+id/add_button"
-            android:layout_width="?attr/actionBarSize"
+            android:layout_width="?android:attr/actionBarSize"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:text="@string/add_subject_symbol"

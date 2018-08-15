@@ -26,6 +26,9 @@ import android.widget.TwoLineListItem;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 
 /**
  * Created by karl on 15.10.17.
@@ -58,6 +61,14 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
     }
 
     /* Helper functions */
+    public String concatWithNewlines(Collection<String> words) {
+        StringBuilder wordList = new StringBuilder();
+        for (String word : words) {
+            wordList.append(word).append("\n");
+        }
+        return new String(wordList.deleteCharAt(wordList.length() - 1));
+    }
+
     public void updatePointsViewText() {
         pointsView.setText(manager.getPointsText());
     }
@@ -83,18 +94,23 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         }
     }
 
-    // Opens a dialog to edit the DownloadDocument
+    /* Opens a dialog to edit the DownloadDocument:
+     * - title
+     * - points
+     * - maximum points
+     */
+
     private void openDownloadDocumentSettings(final DownloadDocument dd) {
         LayoutInflater inflater = LayoutInflater.from(getContext());
         View dialogView = inflater.inflate(R.layout.dialog_download_document_settings, null);
-        final TextInputEditText newPointsInput = dialogView.findViewById(R.id.new_points_input);
-        String pointsString = Double.toString(dd.getPoints());
-        Log.d("SheetsListViewAdapter", "Points text is " + pointsString);
+        final TextInputEditText titleInput = dialogView.findViewById(R.id.title_input);
+        titleInput.setText(dd.title);
+        final TextInputEditText pointsInput = dialogView.findViewById(R.id.points_input);
         if (dd.getPoints() >= 0) {
-            newPointsInput.setText(Double.toString(dd.getPoints()));
+            pointsInput.setText(Double.toString(dd.getPoints()));
         }
-        final TextInputEditText newTitleInput = dialogView.findViewById(R.id.new_title_input);
-        newTitleInput.setText(dd.title);
+        final TextInputEditText maximumPointsInput = dialogView.findViewById(R.id.maximum_points_input);
+        maximumPointsInput.setText(Integer.toString(dd.getMaximumPoints()));
         new AlertDialog.Builder(getContext())
                 .setTitle(dd.title)
                 .setView(dialogView)
@@ -103,20 +119,35 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                         new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialogInterface, int which) {
+                                //titleMap
+                                String title = titleInput.getText().toString();
+                                if (!title.equals(dd.title)) {
+                                    dd.title = title;
+                                    manager.getTitleMap().put(dd.titleId, title);
+                                }
+
                                 //points
                                 try {
-                                    String inputText = newPointsInput.getText().toString();
+                                    String inputText = pointsInput.getText().toString();
                                     dd.setPoints(Double.parseDouble(inputText));
                                 } catch (NumberFormatException e) {
-                                    Log.d("SheetsListViewAdapter", "Input is not a number -> points deleted");
+                                    Log.d("SheetsListViewAdapter",
+                                            "Input points is not a number -> points deleted");
                                     dd.setPoints(-1);
                                 }
-                                //titleMap
-                                String newTitle = newTitleInput.getText().toString();
-                                if (!newTitle.equals(dd.title)) {
-                                    dd.title = newTitle;
-                                    manager.getTitleMap().put(dd.titleId, newTitle);
+
+                                //maximumPoints
+                                try {
+                                    String inputText = maximumPointsInput.getText().toString();
+                                    dd.setMaximumPoints(Integer.parseInt(inputText));
+                                } catch (NumberFormatException e) {
+                                    Log.d("SheetsListViewAdapter",
+                                            "Input maximumPoints is not a number");
+                                    Snackbar.make(MainActivity.contentView,
+                                            R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
+                                            .show();
                                 }
+
                                 notifyDataSetChanged();
                                 manager.saveDownloadDocuments();
                             }
@@ -124,18 +155,27 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                 .show();
     }
 
-    // Opens a dialog to edit the DownloadManager
+    /* Opens a dialog to edit the DownloadManager
+     * - name
+     * - maximumPoints
+     * - sheetRegex
+     * - stickiedTitles
+     * - TODO: deletion (button + confirmation popup)
+     */
+
     public void openDownloadManagerSettings() {
         LayoutInflater inflater = LayoutInflater.from(getContext());
         View dialogView = inflater.inflate(R.layout.dialog_download_manager_settings, null);
-        final TextInputEditText newNameInput = dialogView.findViewById(R.id.new_name_input);
-        newNameInput.setText(manager.getName());
-        final TextInputEditText newUrlInput = dialogView.findViewById(R.id.new_url_input);
-        newUrlInput.setText(manager.getDirectoryURL().toString());
-        final TextInputEditText newMaximumPointsInput = dialogView.findViewById(R.id.new_maximum_points_input);
-        newMaximumPointsInput.setText(Integer.toString(manager.getMaximumPoints()));
-        final TextInputEditText newSheetRegexInput = dialogView.findViewById(R.id.new_sheet_regex_input);
-        newSheetRegexInput.setText(manager.getSheetRegex());
+        final TextInputEditText nameInput = dialogView.findViewById(R.id.name_input);
+        nameInput.setText(manager.getName());
+        final TextInputEditText urlInput = dialogView.findViewById(R.id.url_input);
+        urlInput.setText(manager.getDirectoryURL().toString());
+        final TextInputEditText maximumPointsInput = dialogView.findViewById(R.id.maximum_points_input);
+        maximumPointsInput.setText(Integer.toString(manager.getMaximumPoints()));
+        final TextInputEditText sheetRegexInput = dialogView.findViewById(R.id.sheet_regex_input);
+        sheetRegexInput.setText(manager.getSheetRegex());
+        final TextInputEditText stickiedTitlesInput = dialogView.findViewById(R.id.stickied_titles_input);
+        stickiedTitlesInput.setText(concatWithNewlines(manager.getStickiedTitles()));
         new AlertDialog.Builder(getContext())
                 .setTitle(manager.getName())
                 .setView(dialogView)
@@ -146,20 +186,19 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                             public void onClick(DialogInterface dialogInterface, int which) {
                                 //name
                                 boolean nameChanged = false;
-                                String newName = newNameInput.getText().toString();
-                                if (!newName.equals(manager.getName())) {
+                                String name = nameInput.getText().toString();
+                                if (!name.equals(manager.getName())) {
                                     Log.d("SheetsListViewAdapter", "Name changed");
-                                    manager.setName(newName);
+                                    manager.setName(name);
                                     nameChanged = true;
                                 }
                                 //url
                                 boolean urlChanged = false;
                                 try {
-                                    String inputText = newUrlInput.getText().toString();
-                                    URL newUrl = new URL(inputText);
-                                    if (!newUrl.equals(manager.getDirectoryURL())) {
+                                    URL url = new URL(urlInput.getText().toString());
+                                    if (!url.equals(manager.getDirectoryURL())) {
                                         Log.d("SheetsListViewAdapter", "URL changed");
-                                        manager.setDirectoryURL(newUrl);
+                                        manager.setDirectoryURL(url);
                                         urlChanged = true;
                                     }
                                 } catch (MalformedURLException e) {
@@ -171,11 +210,11 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                 //maximumPoints
                                 boolean maximumPointsChanged = false;
                                 try {
-                                    String inputText = newMaximumPointsInput.getText().toString();
-                                    int newMaximumPoints = Integer.parseInt(inputText);
-                                    if (newMaximumPoints != manager.getMaximumPoints()) {
+                                    String inputText = maximumPointsInput.getText().toString();
+                                    int maximumPoints = Integer.parseInt(inputText);
+                                    if (maximumPoints != manager.getMaximumPoints()) {
                                         Log.d("SheetsListViewAdapter", "Maximum points changed");
-                                        manager.setMaximumPoints(newMaximumPoints);
+                                        manager.setMaximumPoints(maximumPoints);
                                         maximumPointsChanged = true;
                                     }
                                 } catch (NumberFormatException e) {
@@ -186,16 +225,29 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                 }
                                 //sheetRegex
                                 boolean sheetRegexChanged = false;
-                                String newSheetRegex = newSheetRegexInput.getText().toString();
-                                if (!newSheetRegex.equals(manager.getSheetRegex())) {
+                                String sheetRegex = sheetRegexInput.getText().toString();
+                                if (!sheetRegex.equals(manager.getSheetRegex())) {
                                     Log.d("SheetsListViewAdapter", "SheetRegex changed");
-                                    manager.setSheetRegex(newSheetRegex);
+                                    manager.setSheetRegex(sheetRegex);
                                     sheetRegexChanged = true;
+                                }
+
+                                //stickiedTitles
+                                boolean stickiedTitlesChanged = false;
+                                String inputText = stickiedTitlesInput.getText().toString();
+                                String[] stickiedTitlesArray = inputText.split("\n+");
+                                ArrayList<String> stickiedTitles =
+                                        new ArrayList<>(Arrays.asList(stickiedTitlesArray));
+                                if (!stickiedTitles.equals(manager.getStickiedTitles())) {
+                                    Log.d("SheetsListViewAdapter", "stickiedTitles changed");
+                                    manager.setStickiedTitles(stickiedTitles);
+                                    stickiedTitlesChanged = true;
                                 }
 
                                 if (urlChanged) {
                                     notifyListener(true);
-                                } else if (maximumPointsChanged || sheetRegexChanged || nameChanged) {
+                                } else if (maximumPointsChanged || sheetRegexChanged || nameChanged
+                                        || stickiedTitlesChanged) {
                                     notifyListener(false);
                                 }
                             }
