@@ -237,6 +237,8 @@ public class MainActivity extends AppCompatActivity implements
                 almaStickied.add("Skript");
                 algorithmicMathematicsDownloadManager.setStickiedTitles(almaStickied);
                 algorithmicMathematicsDownloadManager.setSheetRegex("Blatt (\\d+)");
+                algorithmicMathematicsDownloadManager.setUsername("alma");
+                algorithmicMathematicsDownloadManager.setPassword("landau");
 
                 linearAlgebraDownloadManager.setMaximumPoints(16);
                 HashMap<String, String> laMap = new HashMap<>();
@@ -246,6 +248,8 @@ public class MainActivity extends AppCompatActivity implements
                 laStickied.add("Skript");
                 linearAlgebraDownloadManager.setStickiedTitles(laStickied);
                 linearAlgebraDownloadManager.setSheetRegex("Übungszettel (\\d+)[*]?");
+                linearAlgebraDownloadManager.setUsername("v1g4");
+                linearAlgebraDownloadManager.setPassword("frobenius");
 
                 logicDownloadManager.setMaximumPoints(20);
                 HashMap<String, String> logicMap = new HashMap<>();

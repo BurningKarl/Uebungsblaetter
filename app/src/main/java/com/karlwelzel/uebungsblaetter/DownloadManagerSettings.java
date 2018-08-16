@@ -16,6 +16,8 @@ public class DownloadManagerSettings {
     public String sheetRegex = "";
     public ArrayList<String> stickiedTitles = new ArrayList<>();
     public HashMap<String, String> titleMap = new HashMap<>();
+    public String username = "";
+    public String password = "";
 
     public DownloadManagerSettings(String name, URL directoryURL, File parentDirectory) {
         this.name = name;

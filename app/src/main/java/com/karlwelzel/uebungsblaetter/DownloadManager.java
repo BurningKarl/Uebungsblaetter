@@ -180,6 +180,31 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         }
     }
 
+    public String getUsername() {
+        return settings.username;
+    }
+
+    public void setUsername(String value) {
+        Log.d("DownloadManager|" + getName(), "setUsername: " + value);
+        if (value == null) {
+            settings.username = "";
+        } else {
+            settings.username = value;
+        }
+    }
+
+    public String getPassword() {
+        return settings.password;
+    }
+
+    public void setPassword(String value) {
+        Log.d("DownloadManager|" + getName(), "setPassword: " + value);
+        if (value == null) {
+            settings.password = "";
+        } else {
+            settings.password = value;
+        }
+    }
 
     /* Simple helper functions */
     public String getPointsText() {
@@ -211,6 +236,12 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
             builder.append("%");
         }
         return builder.toString();
+    }
+
+    private void addAuthorization(URLConnection connection) {
+        String userCredentials = getUsername() + ":" + getPassword();
+        String basicAuth = "Basic " + Base64.encodeToString(userCredentials.getBytes(), Base64.NO_WRAP);
+        connection.setRequestProperty("Authorization", basicAuth);
     }
 
     private File urlToFile(URL url) {
@@ -379,12 +410,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         DownloadDocument currentFile = downloadDocuments.get(index);
         currentFile.file.getParentFile().mkdirs();
         URLConnection connection = currentFile.url.openConnection();
-        //TODO: Remove this line
-        if (currentFile.url.toString().equals("http://www.math.uni-bonn.de/people/gjasso/auth/LA_ss18.pdf")) {
-            String userCredentials = "v1g4:frobenius";
-            String basicAuth = "Basic " + Base64.encodeToString(userCredentials.getBytes(), Base64.NO_WRAP);
-            connection.setRequestProperty("Authorization", basicAuth);
-        }
+        addAuthorization(connection);
         connection.connect();
         int lengthOfFile = connection.getContentLength();
         BufferedInputStream input = new BufferedInputStream(connection.getInputStream());
@@ -402,16 +428,11 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         input.close();
     }
 
-    private void addDownloadDocumentByLinkElement(Element link) throws IOException {
+    private int addDownloadDocumentByLinkElement(Element link) throws IOException {
         //Create download Document
         DownloadDocument dd = linkElementToDownloadDocument(link);
         HttpURLConnection connection = (HttpURLConnection) dd.url.openConnection();
-        //TODO: Handle documents with authentication more thoughtfully
-        if (link.attr("href").equals("http://www.math.uni-bonn.de/people/gjasso/auth/LA_ss18.pdf")) {
-            String userCredentials = "v1g4:frobenius";
-            String basicAuth = "Basic " + Base64.encodeToString(userCredentials.getBytes(), Base64.NO_WRAP);
-            connection.setRequestProperty("Authorization", basicAuth);
-        }
+        addAuthorization(connection);
         connection.setRequestMethod("HEAD");
         Log.d("DownloadManager", "Response code: " + connection.getResponseCode());
         //Check if it can be downloaded
@@ -430,19 +451,41 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
             }
             downloadDocuments.add(dd);
         }
-
+        return connection.getResponseCode();
     }
 
     private void updateDownloadDocuments() throws IOException {
         publishProgress(-1);
         downloadDocuments.clear();
         Document htmlDocument = Jsoup.connect(getDirectoryURL().toString()).get();
+        boolean someDocumentsInaccessible = false;
+        boolean someDocumentsUnauthorized = false;
         for (Element link : htmlDocument.getElementsByAttributeValueEnding("href", ".pdf")) {
             Log.d("DownloadManager", "Link found: " + link.attr("href"));
-            addDownloadDocumentByLinkElement(link);
+            int responseCode = addDownloadDocumentByLinkElement(link);
+            switch (responseCode) {
+                case 200: //successful
+                    break;
+                case 401: //unauthorized
+                    someDocumentsUnauthorized = true;
+                    break;
+                default: //failed with other reasons
+                    someDocumentsInaccessible = true;
+                    break;
+            }
         }
         sortDownloadDocuments();
         saveDownloadDocuments();
+        if (someDocumentsInaccessible) {
+            Snackbar.make(MainActivity.contentView,
+                    R.string.documents_inaccessible, Snackbar.LENGTH_SHORT)
+                    .show();
+        }
+        if (someDocumentsUnauthorized) {
+            Snackbar.make(MainActivity.contentView,
+                    R.string.documents_unauthorized, Snackbar.LENGTH_SHORT)
+                    .show();
+        }
     }
 
     @Override

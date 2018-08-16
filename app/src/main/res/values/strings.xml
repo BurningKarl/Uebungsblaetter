@@ -8,6 +8,8 @@
     <string name="url">Link</string>
     <string name="sheet_regular_expression">Regulärer Ausdruck für ein Blatt</string>
     <string name="stickied_titles">Oben angeheftete Dokumente</string>
+    <string name="username">Nutzername</string>
+    <string name="password">Passwort</string>
 
     <string name="sheet_title_format">Blatt %d</string>
     <string name="sheet_title_regex">Blatt (\\d+)</string>
@@ -23,5 +25,7 @@
     <string name="not_a_valid_url">Dies ist keine gültige URL</string>
     <string name="download_failed_index_file">Das Herunterladen der Übersicht ist fehlgeschlagen</string>
     <string name="download_failed">Das Herunterladen der Dokumente ist fehlgeschlagen</string>
+    <string name="documents_inaccessible">Einige Dokumente sind gesperrt</string>
+    <string name="documents_unauthorized">Einige Dokumente sind mit einem Passwort geschützt</string>
 
 </resources>

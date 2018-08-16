@@ -94,13 +94,13 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         }
     }
 
-    /* Opens a dialog to edit the DownloadDocument:
-     * - title
-     * - points
-     * - maximum points
-     */
-
     private void openDownloadDocumentSettings(final DownloadDocument dd) {
+        /* Opens a dialog to edit the DownloadDocument:
+         * - title
+         * - points
+         * - maximum points
+         */
+
         LayoutInflater inflater = LayoutInflater.from(getContext());
         View dialogView = inflater.inflate(R.layout.dialog_download_document_settings, null);
         final TextInputEditText titleInput = dialogView.findViewById(R.id.title_input);
@@ -155,15 +155,16 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                 .show();
     }
 
-    /* Opens a dialog to edit the DownloadManager
-     * - name
-     * - maximumPoints
-     * - sheetRegex
-     * - stickiedTitles
-     * - TODO: deletion (button + confirmation popup)
-     */
-
     public void openDownloadManagerSettings() {
+        /* Opens a dialog to edit the DownloadManager
+         * - name
+         * - maximumPoints
+         * - sheetRegex
+         * - stickiedTitles
+         * - username and password
+         * - TODO: deletion (button + confirmation popup)
+         */
+
         LayoutInflater inflater = LayoutInflater.from(getContext());
         View dialogView = inflater.inflate(R.layout.dialog_download_manager_settings, null);
         final TextInputEditText nameInput = dialogView.findViewById(R.id.name_input);
@@ -176,6 +177,10 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
         sheetRegexInput.setText(manager.getSheetRegex());
         final TextInputEditText stickiedTitlesInput = dialogView.findViewById(R.id.stickied_titles_input);
         stickiedTitlesInput.setText(concatWithNewlines(manager.getStickiedTitles()));
+        final TextInputEditText usernameInput = dialogView.findViewById(R.id.username_input);
+        usernameInput.setText(manager.getUsername());
+        final TextInputEditText passwordInput = dialogView.findViewById(R.id.password_input);
+        passwordInput.setText(manager.getPassword());
         new AlertDialog.Builder(getContext())
                 .setTitle(manager.getName())
                 .setView(dialogView)
@@ -244,7 +249,23 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                     stickiedTitlesChanged = true;
                                 }
 
-                                if (urlChanged) {
+                                //username and password
+                                boolean credentialsChanged = false;
+                                String username = usernameInput.getText().toString();
+                                String password = passwordInput.getText().toString();
+                                if (!username.equals(manager.getUsername())) {
+                                    Log.d("SheetsListViewAdapter", "username changed: " + username);
+                                    manager.setUsername(username);
+                                    credentialsChanged = true;
+                                }
+                                if (!password.equals(manager.getPassword())) {
+                                    Log.d("SheetsListViewAdapter", "password changed: " + password);
+                                    manager.setPassword(password);
+                                    credentialsChanged = true;
+                                }
+
+
+                                if (urlChanged || credentialsChanged) {
                                     notifyListener(true);
                                 } else if (maximumPointsChanged || sheetRegexChanged || nameChanged
                                         || stickiedTitlesChanged) {
