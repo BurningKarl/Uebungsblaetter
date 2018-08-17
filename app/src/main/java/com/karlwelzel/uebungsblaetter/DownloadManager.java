@@ -380,7 +380,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         progressDialog = new ProgressDialog(MainActivity.getContext());
         progressDialog.setMessage("");
         progressDialog.setIndeterminate(false);
-        progressDialog.setMax(100);
+        progressDialog.setMax(1);
         progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
         progressDialog.setCancelable(true);
         progressDialog.show();
@@ -397,16 +397,16 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         if (progress[0] == -1) {
             // Downloading the index file
             progressDialog.setMessage(context.getString(R.string.download_message_index_file));
-            progressDialog.setProgress(100);
+            progressDialog.setProgress(0);
         } else {
             progressDialog.setMessage(context.getString(R.string.download_message,
                     downloadDocuments.get(progress[0]).title));
-            progressDialog.setProgress(progress[1]);
+            progressDialog.setProgress(progress[0] + 1);
         }
     }
 
     private void downloadDocument(int index) throws IOException {
-        publishProgress(index, 0);
+        publishProgress(index);
         DownloadDocument currentFile = downloadDocuments.get(index);
         currentFile.file.getParentFile().mkdirs();
         URLConnection connection = currentFile.url.openConnection();
@@ -420,7 +420,6 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         long total = 0;
         while (progressDialog.isShowing() && !isCancelled() && (count = input.read(data)) != -1) {
             total += count;
-            publishProgress(index, (int) (total * 100) / lengthOfFile);
             output.write(data, 0, count);
         }
         output.flush();
@@ -473,6 +472,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
                     someDocumentsInaccessible = true;
                     break;
             }
+            //TODO: Break when the user cancels the task
         }
         sortDownloadDocuments();
         saveDownloadDocuments();
@@ -492,6 +492,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     protected Integer doInBackground(Integer... someNumber) {
         // Get a list of files from directoryURL first, update downloadFiles
         // and then download all of the them.
+        //TODO: User cancelling should stop the refreshLayout from refreshing
         ArrayList<DownloadDocument> oldDocuments = new ArrayList<>(downloadDocuments);
         boolean indexDownloadSuccessful = true;
         try {
@@ -505,6 +506,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
                     R.string.download_failed_index_file, Snackbar.LENGTH_SHORT)
                     .show();
         }
+        progressDialog.setMax(downloadDocuments.size());
         if (indexDownloadSuccessful) {
             try {
                 DownloadDocument current;

@@ -66,6 +66,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void verifyPermissions() {
+        //This does not block the program
         int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
         if (permission != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, REQUEST_EXTERNAL_STORAGE);
@@ -75,6 +76,7 @@ public class MainActivity extends AppCompatActivity implements
         if (permission != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, PERMISSIONS_INTERNET, REQUEST_INTERNET);
         }
+        //TODO: Close the app when the user does not give the permissions
     }
 
     public void saveDownloadManagers() {
@@ -202,6 +204,7 @@ public class MainActivity extends AppCompatActivity implements
 
         if (managers.isEmpty()) {
             File dirPath = new File(getExternalFilesDir(null), DIRECTORY_NAME);
+            Log.d("Main Activity", "dirPath: " + dirPath.toString());
             DownloadManager analysisDownloadManager = null,
                     algorithmicMathematicsDownloadManager = null,
                     linearAlgebraDownloadManager = null,
