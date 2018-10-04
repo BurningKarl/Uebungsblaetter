@@ -140,7 +140,7 @@ public class MainActivity extends AppCompatActivity implements
     public void openDeleteDownloadManagerDialog() {
         new AlertDialog.Builder(this)
                 .setMessage(R.string.delete_website_are_you_sure)
-                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                .setPositiveButton(R.string.delete, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         deleteActiveDownloadManager();
@@ -211,12 +211,10 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onTabUnselected(TabLayout.Tab tab) {
-
     }
 
     @Override
     public void onTabReselected(TabLayout.Tab tab) {
-        onTabSelected(tab);
     }
 
     @Override
@@ -236,6 +234,7 @@ public class MainActivity extends AppCompatActivity implements
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.add_item:
+                // TODO: Implement adding tabs
                 break;
             case R.id.delete_item:
                 openDeleteDownloadManagerDialog();
@@ -370,13 +369,7 @@ public class MainActivity extends AppCompatActivity implements
             navigationBar.addTab(tab);
         }
 
-        // TODO: Check if firstTab.select() and onTabReselected are necessary
-        if (savedInstanceState == null) {
-            TabLayout.Tab firstTab = navigationBar.getTabAt(0);
-            if (firstTab != null) {
-                firstTab.select();
-            }
-        } else {
+        if (savedInstanceState != null) {
             int selectedTab = savedInstanceState.getInt(STATE_TAB);
             navigationBar.getTabAt(selectedTab).select();
         }

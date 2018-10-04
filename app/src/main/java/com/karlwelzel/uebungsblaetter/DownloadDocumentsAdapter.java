@@ -97,9 +97,6 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         }
     }
 
-    // TODO: Move the layout of both dialogs to their own file
-    // https://developer.android.com/guide/topics/ui/dialogs#java
-
     private void openDownloadDocumentSettings(final DownloadDocument dd) {
         /* Opens a dialog to edit the DownloadDocument:
          * - title
@@ -123,7 +120,7 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
                 .setTitle(dd.title)
                 .setView(dialogView)
                 .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(android.R.string.ok,
+                .setPositiveButton(R.string.save,
                         new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialogInterface, int which) {
@@ -170,7 +167,6 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
          * - sheetRegex
          * - stickiedTitles
          * - username and password
-         * - TODO: deletion (button + confirmation popup)
          */
 
         Log.d("DownloadDocsAdapter|" + manager.getName(), "openDownloadManagerSettings");
@@ -195,7 +191,7 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
                 .setTitle(manager.getName())
                 .setView(dialogView)
                 .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(android.R.string.ok,
+                .setPositiveButton(R.string.save,
                         new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialogInterface, int which) {
