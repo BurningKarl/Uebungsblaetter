@@ -16,8 +16,6 @@
 
     <string name="points_view_prefix">Punkte: </string>
 
-    <string name="add_subject_symbol">+</string>
-
     <string name="download_message_index_file">Herunterladen der Übersicht</string>
     <string name="download_message">%s wird heruntergeladen</string>
 
@@ -27,5 +25,11 @@
     <string name="download_failed">Das Herunterladen der Dokumente ist fehlgeschlagen</string>
     <string name="documents_inaccessible">Einige Dokumente sind gesperrt</string>
     <string name="documents_unauthorized">Einige Dokumente sind mit einem Passwort geschützt</string>
+
+    <string name="add_website">Webseite hinzufügen</string>
+    <string name="delete_website">Webseite löschen</string>
+    <string name="delete_website_are_you_sure">Willst du diese Webseite wirklich löschen?</string>
+
+    <string name="unable_to_delete_last_tab">Die letzte Webseite kann nicht gelöscht werden.</string>
 
 </resources>

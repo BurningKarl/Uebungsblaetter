@@ -39,6 +39,11 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
 
     private static final int itemLayoutId = R.layout.sheet_listview_item;
     private final TextView pointsView;
+
+    public DownloadManager getManager() {
+        return manager;
+    }
+
     private DownloadManager manager;
     private SwipeRefreshLayout swipeRefreshLayout = null;
     private OnManagerChangedListener listener = null;
@@ -91,6 +96,9 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
             Toast.makeText(getContext(), "No handler for this type of file.", Toast.LENGTH_LONG).show();
         }
     }
+
+    // TODO: Move the layout of both dialogs to their own file
+    // https://developer.android.com/guide/topics/ui/dialogs#java
 
     private void openDownloadDocumentSettings(final DownloadDocument dd) {
         /* Opens a dialog to edit the DownloadDocument:

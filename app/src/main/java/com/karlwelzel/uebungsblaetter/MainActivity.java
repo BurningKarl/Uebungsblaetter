@@ -1,11 +1,14 @@
 package com.karlwelzel.uebungsblaetter;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -58,12 +61,14 @@ public class MainActivity extends AppCompatActivity implements
     private TextView pointsView;
     private ListView listView;
     private TabLayout navigationBar;
+    private TabLayout.Tab activeTab;
     private SwipeRefreshLayout swipeRefreshLayout;
 
     public static Context getContext() {
         return activityContext;
     }
 
+    /* Permissions */
     private void verifyPermissions() {
         //This does not block the program
         boolean allPermissionsGranted = true;
@@ -107,24 +112,6 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    public void saveDownloadManagers() {
-        ArrayList<DownloadManagerSettings> managerSettings = new ArrayList<>();
-        for (DownloadManager manager : managers) {
-            managerSettings.add(manager.getSettings());
-        }
-        String dataString = new Gson().toJson(managerSettings);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putString("managers", dataString);
-        Log.d("MainActivity", "saveDownloadManagers:\n" + dataString);
-        editor.apply();
-    }
-
-    public void deleteDownloadManagers() {
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.remove("managers");
-        editor.apply();
-    }
-
     public ArrayList<DownloadManager> loadDownloadManagers() {
         Type collectionType = new TypeToken<ArrayList<DownloadManagerSettings>>() {
         }.getType();
@@ -138,9 +125,81 @@ public class MainActivity extends AppCompatActivity implements
         return downloadManagers;
     }
 
+    public void saveDownloadManagers() {
+        ArrayList<DownloadManagerSettings> managerSettings = new ArrayList<>();
+        for (DownloadManager manager : managers) {
+            managerSettings.add(manager.getSettings());
+        }
+        String dataString = new Gson().toJson(managerSettings);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putString("managers", dataString);
+        Log.d("MainActivity", "saveDownloadManagers:\n" + dataString);
+        editor.apply();
+    }
+
+    public void openDeleteDownloadManagerDialog() {
+        new AlertDialog.Builder(this)
+                .setMessage(R.string.delete_website_are_you_sure)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        deleteActiveDownloadManager();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                    }
+                })
+                .show();
+    }
+
+    public void deleteActiveDownloadManager() {
+        // Deletes the tab, adapter and download manager. Be careful!
+        if (managers.size() <= 1) {
+            Snackbar.make(contentView, R.string.unable_to_delete_last_tab, Snackbar.LENGTH_SHORT)
+                    .show();
+        } else {
+            DownloadDocumentsAdapter adapter = (DownloadDocumentsAdapter) listView.getAdapter();
+            Log.d("MainActivity", "Delete manager " + adapter.getManager().getName()
+                    + " on tab " + activeTab.getText());
+            managers.remove(adapter.getManager());
+            adapters.remove(adapter);
+            navigationBar.removeTab(activeTab);
+            onManagerChanged();
+        }
+    }
+
+    public void deleteAllDownloadManagers() { // this for debug purposes only
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.remove("managers");
+        editor.apply();
+    }
+
+    public void onManagerChanged() {
+        saveDownloadManagers();
+        for (int i = 0; i < navigationBar.getTabCount(); i++) {
+            navigationBar.getTabAt(i).setText(managers.get(i).getName());
+        }
+    }
+
+    @Override
+    public void onManagerChanged(boolean downloadNecessary) {
+        onManagerChanged();
+        if (downloadNecessary) {
+            swipeRefreshLayout.setRefreshing(true);
+            onRefresh();
+        } else {
+            swipeRefreshLayout.setRefreshing(true);
+            ((DownloadDocumentsAdapter) listView.getAdapter()).completeDownloadOffline(swipeRefreshLayout);
+        }
+    }
+
+    /* Tabs */
     @Override
     public void onTabSelected(TabLayout.Tab tab) {
         Log.d("MainActivity", "onTabSelected: " + tab.getPosition() + "|" + tab.getText());
+        activeTab = tab;
         DownloadDocumentsAdapter chosenAdapter = (DownloadDocumentsAdapter) tab.getTag();
         if (chosenAdapter == null) {
             Log.e("MainActivity", "Tab has no tag!");
@@ -165,21 +224,7 @@ public class MainActivity extends AppCompatActivity implements
         ((DownloadDocumentsAdapter) listView.getAdapter()).completeDownload(swipeRefreshLayout);
     }
 
-    @Override
-    public void onManagerChanged(boolean downloadNecessary) {
-        saveDownloadManagers();
-        for (int i = 0; i < navigationBar.getTabCount(); i++) {
-            navigationBar.getTabAt(i).setText(managers.get(i).getName());
-        }
-        if (downloadNecessary) {
-            swipeRefreshLayout.setRefreshing(true);
-            onRefresh();
-        } else {
-            swipeRefreshLayout.setRefreshing(true);
-            ((DownloadDocumentsAdapter) listView.getAdapter()).completeDownloadOffline(swipeRefreshLayout);
-        }
-    }
-
+    /* Menu */
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -190,6 +235,11 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
+            case R.id.add_item:
+                break;
+            case R.id.delete_item:
+                openDeleteDownloadManagerDialog();
+                break;
             case R.id.settings_item:
                 DownloadDocumentsAdapter adapter = (DownloadDocumentsAdapter) listView.getAdapter();
                 adapter.openDownloadManagerSettings();
@@ -200,12 +250,12 @@ public class MainActivity extends AppCompatActivity implements
         return true;
     }
 
+    /* onCreate*/
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
         super.onSaveInstanceState(savedInstanceState);
         savedInstanceState.putInt(STATE_TAB, navigationBar.getSelectedTabPosition());
     }
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -311,6 +361,7 @@ public class MainActivity extends AppCompatActivity implements
         }
 
         navigationBar = findViewById(R.id.navigation_bar);
+        navigationBar.addOnTabSelectedListener(this);
 
         for (int i = 0; i < managers.size(); i++) {
             TabLayout.Tab tab = navigationBar.newTab();
@@ -319,7 +370,7 @@ public class MainActivity extends AppCompatActivity implements
             navigationBar.addTab(tab);
         }
 
-        navigationBar.addOnTabSelectedListener(this);
+        // TODO: Check if firstTab.select() and onTabReselected are necessary
         if (savedInstanceState == null) {
             TabLayout.Tab firstTab = navigationBar.getTabAt(0);
             if (firstTab != null) {
@@ -330,6 +381,6 @@ public class MainActivity extends AppCompatActivity implements
             navigationBar.getTabAt(selectedTab).select();
         }
 
-        //deleteDownloadManagers();
+        //deleteAllDownloadManagers();
     }
 }
