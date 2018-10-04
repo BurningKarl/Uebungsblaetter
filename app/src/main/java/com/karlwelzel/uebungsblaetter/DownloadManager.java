@@ -38,33 +38,38 @@ import java.util.regex.Pattern;
  * Created by karl on 28.10.17.
  */
 
-// TODO: Rethink variable names and Log tag
+/*
+ * TODO: Rethink variable names and Log tag
+ * Sheets -> Documents in SheetsListViewAdapter
+ * downloadDocuments ?-> documents
+ */
+
 public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     private DownloadManagerSettings settings;
 
-    private ArrayList<DownloadDocument> downloadDocuments;
-    private ArrayList<DownloadDocument> localDocuments;
+    // The available documents (as displayed online)
+    private ArrayList<DownloadDocument> downloadDocuments = new ArrayList<>();
+    // The documents, that are already downloaded (always a subset of downloadDocuments)
+    private ArrayList<DownloadDocument> localDocuments = new ArrayList<>();
 
     private OnListUpdateListener listener = null;
     private SharedPreferences preferences;
     private ProgressDialog progressDialog;
 
     public DownloadManager(String managerName, URL directoryURL, File directoryFile) {
-        //Log.d("DownloadManager", "constructor 1 "+managerName+"|"+directoryURL.toString()+"|"+directoryFile.toString());
+        //Log.d("DownloadManager|" + getName(), "constructor 1 "+managerName+"|"+directoryURL.toString()+"|"+directoryFile.toString());
         settings = new DownloadManagerSettings(managerName, directoryURL, directoryFile);
-        preferences = MainActivity.getContext().getSharedPreferences(getManagerID(),
-                Context.MODE_PRIVATE);
-        downloadDocuments = loadDownloadDocuments();
-        localDocuments = new ArrayList<>();
+        updatePreferences();
+        loadDownloadDocuments();
+        localScan(false);
     }
 
     public DownloadManager(DownloadManagerSettings settings) {
-        //Log.d("DownloadManager", "constructor 2 "+settings.getName()+"|"+settings.getDirectoryURL().toString()+"|"+settings.getDirectory().toString());
+        //Log.d("DownloadManager|" + getName(), "constructor 2 "+settings.getName()+"|"+settings.getDirectoryURL().toString()+"|"+settings.getDirectory().toString());
         this.settings = settings;
-        preferences = MainActivity.getContext().getSharedPreferences(getManagerID(),
-                Context.MODE_PRIVATE);
-        downloadDocuments = loadDownloadDocuments();
-        localDocuments = new ArrayList<>();
+        updatePreferences();
+        loadDownloadDocuments();
+        localScan(false);
     }
 
     public DownloadManager(DownloadManagerSettings settings,
@@ -72,7 +77,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
                            ArrayList<DownloadDocument> localDocuments,
                            OnListUpdateListener listener,
                            SharedPreferences preferences) {
-        //Log.d("DownloadManager", "constructor 3 "+settings.getName()+"|"+settings.getDirectoryURL().toString()+"|"+settings.getDirectory().toString());
+        //Log.d("DownloadManager|" + getName(), "constructor 3 "+settings.getName()+"|"+settings.getDirectoryURL().toString()+"|"+settings.getDirectory().toString());
         this.settings = settings;
         this.downloadDocuments = downloadDocuments;
         this.localDocuments = localDocuments;
@@ -100,7 +105,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     public void setName(String name) {
-        Log.d("DownloadManager|" + getName(), "setMaximumPoints:\n" + name);
+        Log.d("DownloadManager|" + getName(), "setName:\n" + name);
         settings.setName(name);
     }
 
@@ -110,11 +115,11 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
 
     // When setting a new url, downloadDocuments is loaded from preferences
     public void setDirectoryURL(URL directoryURL) {
-        Log.d("DownloadManager|" + getName(), "setMaximumPoints:\n" + directoryURL.toString());
+        Log.d("DownloadManager|" + getName(), "setDirectoryURL:\n" + directoryURL.toString());
         if (!settings.getDirectoryURL().equals(directoryURL)) {
             settings.setDirectoryURL(directoryURL);
             updatePreferences();
-            downloadDocuments = loadDownloadDocuments();
+            loadDownloadDocuments();
         }
     }
 
@@ -327,27 +332,33 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         String dataString = new Gson().toJson(downloadDocuments);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putString("documents", dataString);
-        Log.d("DownloadManager", "saveDownloadDocuments:\n" + dataString);
+        Log.d("DownloadManager|" + getName(), "saveDownloadDocuments:\n" + dataString);
         editor.apply();
     }
 
-    private ArrayList<DownloadDocument> loadDownloadDocuments() {
+    private void loadDownloadDocuments() {
         Type collectionType = new TypeToken<ArrayList<DownloadDocument>>() {
         }.getType();
         String dataString = preferences.getString("documents", "[]");
-        Log.d("DownloadManager", "loadDownloadDocuments:\n" + dataString);
-        return new Gson().fromJson(dataString, collectionType);
+        Log.d("DownloadManager|" + getName(), "loadDownloadDocuments:\n" + dataString);
+        downloadDocuments = new Gson().fromJson(dataString, collectionType);
     }
 
     /* Functions for scanning and downloading */
-    public void localScan() {
+    public void localScan(boolean callNotifyListener) {
         localDocuments.clear();
         for (DownloadDocument dd : downloadDocuments) {
             if (dd.file.exists()) {
                 localDocuments.add(dd);
             }
         }
-        notifyListener();
+        if (callNotifyListener) {
+            notifyListener();
+        }
+    }
+
+    public void localScan() {
+        localScan(true);
     }
 
     private void updateDownloadDocumentsOffline() {
@@ -376,7 +387,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     private void openProgressbar() {
-        Log.d("DownloadManager", "openProgressbar");
+        Log.d("DownloadManager|" + getName(), "openProgressbar");
         progressDialog = new ProgressDialog(MainActivity.getContext());
         progressDialog.setMessage("");
         progressDialog.setIndeterminate(false);
@@ -433,7 +444,7 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         HttpURLConnection connection = (HttpURLConnection) dd.url.openConnection();
         addAuthorization(connection);
         connection.setRequestMethod("HEAD");
-        Log.d("DownloadManager", "Response code: " + connection.getResponseCode());
+        Log.d("DownloadManager|" + getName(), "Response code: " + connection.getResponseCode());
         //Check if it can be downloaded
         if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
             //Set date from Last-Modified header
@@ -460,8 +471,14 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         boolean someDocumentsInaccessible = false;
         boolean someDocumentsUnauthorized = false;
         for (Element link : htmlDocument.getElementsByAttributeValueEnding("href", ".pdf")) {
-            Log.d("DownloadManager", "Link found: " + link.attr("href"));
-            int responseCode = addDownloadDocumentByLinkElement(link);
+            Log.d("DownloadManager|" + getName(), "Link found: " + link.attr("href"));
+            int responseCode;
+            try {
+                responseCode = addDownloadDocumentByLinkElement(link);
+            } catch (IOException e) {
+                Log.d("DownloadManager|" + getName(), "Accessing this files metadata failed: " + e.getMessage());
+                responseCode = -1;
+            }
             switch (responseCode) {
                 case 200: //successful
                     break;
@@ -478,12 +495,12 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         saveDownloadDocuments();
         if (someDocumentsInaccessible) {
             Snackbar.make(MainActivity.contentView,
-                    R.string.documents_inaccessible, Snackbar.LENGTH_SHORT)
+                    R.string.documents_inaccessible, Snackbar.LENGTH_LONG)
                     .show();
         }
         if (someDocumentsUnauthorized) {
             Snackbar.make(MainActivity.contentView,
-                    R.string.documents_unauthorized, Snackbar.LENGTH_SHORT)
+                    R.string.documents_unauthorized, Snackbar.LENGTH_LONG)
                     .show();
         }
     }
@@ -498,12 +515,13 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         try {
             updateDownloadDocuments();
         } catch (IOException e) {
-            Log.d("DownloadManager", "Downloading the index file failed. Keep the old documents");
+            e.printStackTrace();
+            Log.d("DownloadManager|" + getName(), "Downloading the index file failed. Keep the old documents");
             indexDownloadSuccessful = false;
             downloadDocuments = oldDocuments;
             updateDownloadDocumentsOffline();
             Snackbar.make(MainActivity.contentView,
-                    R.string.download_failed_index_file, Snackbar.LENGTH_SHORT)
+                    R.string.download_failed_index_file, Snackbar.LENGTH_LONG)
                     .show();
         }
         progressDialog.setMax(downloadDocuments.size());
@@ -519,10 +537,10 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
                     }
                 }
             } catch (IOException e) {
-                Log.d("DownloadManager", "Download failed. Skipping the rest");
+                Log.d("DownloadManager|" + getName(), "Download failed. Skipping the rest");
                 e.printStackTrace();
                 Snackbar.make(MainActivity.contentView,
-                        R.string.download_failed, Snackbar.LENGTH_SHORT)
+                        R.string.download_failed, Snackbar.LENGTH_LONG)
                         .show();
 
             }
@@ -537,8 +555,9 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     /* Listener stuff */
-    public void setListener(OnListUpdateListener listener) {
+    public void setOnListUpdateListener(OnListUpdateListener listener) {
         this.listener = listener;
+        notifyListener();
     }
 
     private void notifyListener() {

@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity implements
     private static final String STATE_TAB = "tab";
 
     private static final String ANALYSIS_URL = "http://www.math.uni-bonn.de/ag/ana/SoSe2018/V1G2_SS_18";
-    private static final String ALGORITHMIC_MATHEMATICS_URL = "http://ins.uni-bonn.de/teaching/vorlesungen/AlmaSS18";
+    private static final String ALGORITHMIC_MATHEMATICS_URL = "https://ins.uni-bonn.de/teachings/ss-2018-203-v1g6-algorithmische-m/";
     private static final String LINEAR_ALGEBRA_URL = "http://www.math.uni-bonn.de/people/gjasso/teaching/sose18/v1g4/";
     private static final String LOGIC_URL = "http://www.math.uni-bonn.de/ag/logik/teaching/2018SS/logik.shtml";
 
@@ -118,7 +118,6 @@ public class MainActivity extends AppCompatActivity implements
             Log.e("MainActivity", "Tab has no tag!");
         } else {
             listView.setAdapter(chosenAdapter);
-            chosenAdapter.completeScan();
             chosenAdapter.updatePointsViewText();
         }
     }

@@ -43,14 +43,12 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
     private SwipeRefreshLayout swipeRefreshLayout = null;
     private OnManagerChangedListener listener = null;
 
-    private boolean scanFinished = false;
-
     public SheetsListViewAdapter(@NonNull Context context, TextView pointsView,
                                  DownloadManager manager) {
         super(context, itemLayoutId);
         this.pointsView = pointsView;
         this.manager = manager;
-        this.manager.setListener(this);
+        this.manager.setOnListUpdateListener(this);
         registerDataSetObserver(new DataSetObserver() {
             @Override
             public void onChanged() {
@@ -277,15 +275,6 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
     }
 
     /* DownloadManager interactions */
-    public void completeScan() {
-        Log.d("SheetsListViewAdapter", "completeScan");
-        if (!scanFinished) {
-            clear();
-            manager.localScan();
-            scanFinished = true;
-        }
-    }
-
     public void completeDownload(SwipeRefreshLayout layout) {
         Log.d("SheetsListViewAdapter", "completeDownload");
         swipeRefreshLayout = layout;
