@@ -34,7 +34,7 @@ import java.util.Collection;
  * Created by karl on 15.10.17.
  */
 
-public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
+public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         implements DownloadManager.OnListUpdateListener {
 
     private static final int itemLayoutId = R.layout.sheet_listview_item;
@@ -43,8 +43,8 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
     private SwipeRefreshLayout swipeRefreshLayout = null;
     private OnManagerChangedListener listener = null;
 
-    public SheetsListViewAdapter(@NonNull Context context, TextView pointsView,
-                                 DownloadManager manager) {
+    public DownloadDocumentsAdapter(@NonNull Context context, TextView pointsView,
+                                    DownloadManager manager) {
         super(context, itemLayoutId);
         this.pointsView = pointsView;
         this.manager = manager;
@@ -99,6 +99,8 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
          * - maximum points
          */
 
+        Log.d("DownloadDocsAdapter|" + manager.getName(),
+                "openDownloadDocumentSettings: " + dd.title);
         LayoutInflater inflater = LayoutInflater.from(getContext());
         View dialogView = inflater.inflate(R.layout.dialog_download_document_settings, null);
         final TextInputEditText titleInput = dialogView.findViewById(R.id.title_input);
@@ -129,8 +131,8 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                     String inputText = pointsInput.getText().toString();
                                     dd.setPoints(Double.parseDouble(inputText));
                                 } catch (NumberFormatException e) {
-                                    Log.d("SheetsListViewAdapter",
-                                            "Input points is not a number -> points deleted");
+                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
+                                            "pointsInput.getText() is not a number -> points deleted");
                                     dd.setPoints(-1);
                                 }
 
@@ -139,8 +141,8 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                     String inputText = maximumPointsInput.getText().toString();
                                     dd.setMaximumPoints(Integer.parseInt(inputText));
                                 } catch (NumberFormatException e) {
-                                    Log.d("SheetsListViewAdapter",
-                                            "Input maximumPoints is not a number");
+                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
+                                            "maximumPointsInput.getText() is not a number");
                                     Snackbar.make(MainActivity.contentView,
                                             R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
                                             .show();
@@ -162,6 +164,8 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
          * - username and password
          * - TODO: deletion (button + confirmation popup)
          */
+
+        Log.d("DownloadDocsAdapter|" + manager.getName(), "openDownloadManagerSettings");
 
         LayoutInflater inflater = LayoutInflater.from(getContext());
         View dialogView = inflater.inflate(R.layout.dialog_download_manager_settings, null);
@@ -191,7 +195,8 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                 boolean nameChanged = false;
                                 String name = nameInput.getText().toString();
                                 if (!name.equals(manager.getName())) {
-                                    Log.d("SheetsListViewAdapter", "Name changed");
+                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
+                                            "Name changed: " + name);
                                     manager.setName(name);
                                     nameChanged = true;
                                 }
@@ -200,12 +205,14 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                 try {
                                     URL url = new URL(urlInput.getText().toString());
                                     if (!url.equals(manager.getDirectoryURL())) {
-                                        Log.d("SheetsListViewAdapter", "URL changed");
+                                        Log.d("DownloadDocsAdapter|" + manager.getName(),
+                                                "URL changed: " + url.toString());
                                         manager.setDirectoryURL(url);
                                         urlChanged = true;
                                     }
                                 } catch (MalformedURLException e) {
-                                    Log.d("SheetsListViewAdapter", "Input is not a valid url");
+                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
+                                            "urlInput.getText() is not a valid url");
                                     Snackbar.make(MainActivity.contentView,
                                             R.string.not_a_valid_url, Snackbar.LENGTH_SHORT)
                                             .show();
@@ -216,12 +223,14 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                     String inputText = maximumPointsInput.getText().toString();
                                     int maximumPoints = Integer.parseInt(inputText);
                                     if (maximumPoints != manager.getMaximumPoints()) {
-                                        Log.d("SheetsListViewAdapter", "Maximum points changed");
+                                        Log.d("DownloadDocsAdapter|" + manager.getName(),
+                                                "Maximum points changed: " + maximumPoints);
                                         manager.setMaximumPoints(maximumPoints);
                                         maximumPointsChanged = true;
                                     }
                                 } catch (NumberFormatException e) {
-                                    Log.d("SheetsListViewAdapter", "Input is not a number");
+                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
+                                            "maximumPointsInput.getText() is not a number");
                                     Snackbar.make(MainActivity.contentView,
                                             R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
                                             .show();
@@ -230,7 +239,8 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                 boolean sheetRegexChanged = false;
                                 String sheetRegex = sheetRegexInput.getText().toString();
                                 if (!sheetRegex.equals(manager.getSheetRegex())) {
-                                    Log.d("SheetsListViewAdapter", "SheetRegex changed");
+                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
+                                            "SheetRegex changed: " + sheetRegex);
                                     manager.setSheetRegex(sheetRegex);
                                     sheetRegexChanged = true;
                                 }
@@ -242,7 +252,8 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                 ArrayList<String> stickiedTitles =
                                         new ArrayList<>(Arrays.asList(stickiedTitlesArray));
                                 if (!stickiedTitles.equals(manager.getStickiedTitles())) {
-                                    Log.d("SheetsListViewAdapter", "stickiedTitles changed");
+                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
+                                            "stickiedTitles changed");
                                     manager.setStickiedTitles(stickiedTitles);
                                     stickiedTitlesChanged = true;
                                 }
@@ -252,12 +263,14 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                                 String username = usernameInput.getText().toString();
                                 String password = passwordInput.getText().toString();
                                 if (!username.equals(manager.getUsername())) {
-                                    Log.d("SheetsListViewAdapter", "username changed: " + username);
+                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
+                                            "username changed: " + username);
                                     manager.setUsername(username);
                                     credentialsChanged = true;
                                 }
                                 if (!password.equals(manager.getPassword())) {
-                                    Log.d("SheetsListViewAdapter", "password changed: " + password);
+                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
+                                            "password changed: " + password);
                                     manager.setPassword(password);
                                     credentialsChanged = true;
                                 }
@@ -276,26 +289,26 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
 
     /* DownloadManager interactions */
     public void completeDownload(SwipeRefreshLayout layout) {
-        Log.d("SheetsListViewAdapter", "completeDownload");
+        Log.d("DownloadDocsAdapter|" + manager.getName(), "completeDownload");
         swipeRefreshLayout = layout;
-        clear();
         manager.download();
     }
 
     public void completeDownloadOffline(SwipeRefreshLayout layout) {
-        Log.d("SheetsListViewAdapter", "completeDownloadOffline");
+        Log.d("DownloadDocsAdapter|" + manager.getName(), "completeDownloadOffline");
         swipeRefreshLayout = layout;
-        clear();
         manager.downloadOffline();
     }
 
     public void onListUpdate(DownloadDocument... files) {
-        this.addAll(files);
+        clear();
+        addAll(files);
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setRefreshing(false);
             swipeRefreshLayout = null;
         }
-        Log.d("SheetsListViewAdapter", "manager status " + manager.getStatus().name());
+        Log.d("DownloadDocsAdapter|" + manager.getName(),
+                "manager status " + manager.getStatus().name());
         if (!manager.getStatus().equals(AsyncTask.Status.PENDING)) {
             // This is necessary to call execute a second time.
             manager = manager.copy();
@@ -319,7 +332,8 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                 @Override
                 public void onClick(View v) {
                     DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
-                    Log.d("SheetsListViewAdapter", "Opened: " + dd.title);
+                    Log.d("DownloadDocsAdapter|" + manager.getName(),
+                            "Opened: " + dd.title);
                     openPDFDocument(dd.file);
                 }
             });
@@ -327,7 +341,8 @@ public class SheetsListViewAdapter extends ArrayAdapter<DownloadDocument>
                 @Override
                 public boolean onLongClick(View v) {
                     DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
-                    Log.d("SheetsListViewAdapter", "Opened settings: " + dd.title);
+                    Log.d("DownloadDocsAdapter|" + manager.getName(),
+                            "Opened settings: " + dd.title);
                     openDownloadDocumentSettings(dd);
                     return true;
                 }

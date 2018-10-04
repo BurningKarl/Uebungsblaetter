@@ -5,8 +5,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -27,16 +29,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity implements
-        SheetsListViewAdapter.OnManagerChangedListener, TabLayout.OnTabSelectedListener,
+        DownloadDocumentsAdapter.OnManagerChangedListener, TabLayout.OnTabSelectedListener,
         SwipeRefreshLayout.OnRefreshListener {
 
-    private static final int REQUEST_EXTERNAL_STORAGE = 1;
-    private static final int REQUEST_INTERNET = 1;
-    private static final String[] PERMISSIONS_STORAGE = {
+    private static final int PERMISSION_REQUEST_CODE = 1;
+    private static final String[] PERMISSIONS = {
             Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-    };
-    private static final String[] PERMISSIONS_INTERNET = {
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
             Manifest.permission.INTERNET
     };
     private static final String PREFERENCES_NAME = "__MainActivity";
@@ -51,7 +50,7 @@ public class MainActivity extends AppCompatActivity implements
     private static Context activityContext;
 
     private ArrayList<DownloadManager> managers;
-    private ArrayList<SheetsListViewAdapter> adapters;
+    private ArrayList<DownloadDocumentsAdapter> adapters;
 
     private SharedPreferences preferences;
 
@@ -67,16 +66,45 @@ public class MainActivity extends AppCompatActivity implements
 
     private void verifyPermissions() {
         //This does not block the program
-        int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        if (permission != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, REQUEST_EXTERNAL_STORAGE);
+        boolean allPermissionsGranted = true;
+        for (String permission : PERMISSIONS) {
+            if (ContextCompat.checkSelfPermission(this, permission)
+                    != PackageManager.PERMISSION_GRANTED) {
+                allPermissionsGranted = false;
+                break;
+            }
         }
+        if (allPermissionsGranted) {
+            Log.d("MainActivity", "All permissions have been granted.");
+        } else {
+            Log.d("MainActivity", "Some permissions were not granted, requesting them...");
+            ActivityCompat.requestPermissions(this, PERMISSIONS, PERMISSION_REQUEST_CODE);
+        }
+    }
 
-        permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.INTERNET);
-        if (permission != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, PERMISSIONS_INTERNET, REQUEST_INTERNET);
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[],
+                                           @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSION_REQUEST_CODE: {
+                // If request is cancelled, the result arrays are empty.
+                boolean allPermissionsGranted = true;
+                if (grantResults.length == 0) {
+                    allPermissionsGranted = false;
+                } else {
+                    for (int result : grantResults) {
+                        if (result != PackageManager.PERMISSION_GRANTED) {
+                            allPermissionsGranted = false;
+                        }
+                    }
+                }
+                if (allPermissionsGranted) {
+                    Log.d("MainActivity", "All permissions have been actively granted.");
+                } else {
+                    finish();
+                }
+            }
         }
-        //TODO: Close the app when the user does not give the permissions
     }
 
     public void saveDownloadManagers() {
@@ -113,7 +141,7 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onTabSelected(TabLayout.Tab tab) {
         Log.d("MainActivity", "onTabSelected: " + tab.getPosition() + "|" + tab.getText());
-        SheetsListViewAdapter chosenAdapter = (SheetsListViewAdapter) tab.getTag();
+        DownloadDocumentsAdapter chosenAdapter = (DownloadDocumentsAdapter) tab.getTag();
         if (chosenAdapter == null) {
             Log.e("MainActivity", "Tab has no tag!");
         } else {
@@ -134,7 +162,7 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onRefresh() {
-        ((SheetsListViewAdapter) listView.getAdapter()).completeDownload(swipeRefreshLayout);
+        ((DownloadDocumentsAdapter) listView.getAdapter()).completeDownload(swipeRefreshLayout);
     }
 
     @Override
@@ -148,7 +176,7 @@ public class MainActivity extends AppCompatActivity implements
             onRefresh();
         } else {
             swipeRefreshLayout.setRefreshing(true);
-            ((SheetsListViewAdapter) listView.getAdapter()).completeDownloadOffline(swipeRefreshLayout);
+            ((DownloadDocumentsAdapter) listView.getAdapter()).completeDownloadOffline(swipeRefreshLayout);
         }
     }
 
@@ -163,7 +191,7 @@ public class MainActivity extends AppCompatActivity implements
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.settings_item:
-                SheetsListViewAdapter adapter = (SheetsListViewAdapter) listView.getAdapter();
+                DownloadDocumentsAdapter adapter = (DownloadDocumentsAdapter) listView.getAdapter();
                 adapter.openDownloadManagerSettings();
                 break;
             default:
@@ -175,8 +203,6 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
         super.onSaveInstanceState(savedInstanceState);
-
-        // TODO: Popups should stay open when changing the orientation
         savedInstanceState.putInt(STATE_TAB, navigationBar.getSelectedTabPosition());
     }
 
@@ -279,7 +305,7 @@ public class MainActivity extends AppCompatActivity implements
 
         adapters = new ArrayList<>();
         for (DownloadManager manager : managers) {
-            SheetsListViewAdapter current = new SheetsListViewAdapter(this, pointsView, manager);
+            DownloadDocumentsAdapter current = new DownloadDocumentsAdapter(this, pointsView, manager);
             current.setListener(this);
             adapters.add(current);
         }

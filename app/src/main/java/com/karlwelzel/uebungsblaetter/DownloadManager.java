@@ -2,6 +2,7 @@ package com.karlwelzel.uebungsblaetter;
 
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.support.design.widget.Snackbar;
@@ -38,13 +39,7 @@ import java.util.regex.Pattern;
  * Created by karl on 28.10.17.
  */
 
-/*
- * TODO: Rethink variable names and Log tag
- * Sheets -> Documents in SheetsListViewAdapter
- * downloadDocuments ?-> documents
- */
-
-public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
+public class DownloadManager extends AsyncTask<Void, Integer, Void> {
     private DownloadManagerSettings settings;
 
     // The available documents (as displayed online)
@@ -395,6 +390,12 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
         progressDialog.setCancelable(true);
         progressDialog.show();
+        progressDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialogInterface) {
+                cancel(false);
+            }
+        });
     }
 
     @Override
@@ -464,13 +465,16 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
         return connection.getResponseCode();
     }
 
-    private void updateDownloadDocuments() throws IOException {
+    private void updateDownloadDocuments() throws IOException, TaskCancelledException {
         publishProgress(-1);
         downloadDocuments.clear();
         Document htmlDocument = Jsoup.connect(getDirectoryURL().toString()).get();
         boolean someDocumentsInaccessible = false;
         boolean someDocumentsUnauthorized = false;
         for (Element link : htmlDocument.getElementsByAttributeValueEnding("href", ".pdf")) {
+            if (isCancelled()) {
+                throw new TaskCancelledException();
+            }
             Log.d("DownloadManager|" + getName(), "Link found: " + link.attr("href"));
             int responseCode;
             try {
@@ -489,7 +493,9 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
                     someDocumentsInaccessible = true;
                     break;
             }
-            //TODO: Break when the user cancels the task
+        }
+        if (isCancelled()) {
+            throw new TaskCancelledException();
         }
         sortDownloadDocuments();
         saveDownloadDocuments();
@@ -506,29 +512,36 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
     }
 
     @Override
-    protected Integer doInBackground(Integer... someNumber) {
+    protected Void doInBackground(Void... params) {
         // Get a list of files from directoryURL first, update downloadFiles
         // and then download all of the them.
-        //TODO: User cancelling should stop the refreshLayout from refreshing
         ArrayList<DownloadDocument> oldDocuments = new ArrayList<>(downloadDocuments);
         boolean indexDownloadSuccessful = true;
         try {
             updateDownloadDocuments();
         } catch (IOException e) {
             e.printStackTrace();
-            Log.d("DownloadManager|" + getName(), "Downloading the index file failed. Keep the old documents");
+            Log.d("DownloadManager|" + getName(),
+                    "Downloading the index file failed. Keep the old documents");
             indexDownloadSuccessful = false;
-            downloadDocuments = oldDocuments;
-            updateDownloadDocumentsOffline();
             Snackbar.make(MainActivity.contentView,
                     R.string.download_failed_index_file, Snackbar.LENGTH_LONG)
                     .show();
+        } catch (TaskCancelledException e) {
+            e.printStackTrace();
+            Log.d("DownloadManager|" + getName(),
+                    "User cancelled the download of the index file. Keep the old documents");
+            indexDownloadSuccessful = false;
         }
-        progressDialog.setMax(downloadDocuments.size());
+
         if (indexDownloadSuccessful) {
+            progressDialog.setMax(downloadDocuments.size());
             try {
                 DownloadDocument current;
                 for (int i = 0; i < downloadDocuments.size(); i++) {
+                    if (isCancelled()) {
+                        throw new TaskCancelledException();
+                    }
                     current = downloadDocuments.get(i);
                     if (!current.file.exists() ||
                             current.getDate() != null &&
@@ -537,21 +550,50 @@ public class DownloadManager extends AsyncTask<Integer, Integer, Integer> {
                     }
                 }
             } catch (IOException e) {
-                Log.d("DownloadManager|" + getName(), "Download failed. Skipping the rest");
                 e.printStackTrace();
+                Log.d("DownloadManager|" + getName(), "Download failed. Skipping the rest");
                 Snackbar.make(MainActivity.contentView,
                         R.string.download_failed, Snackbar.LENGTH_LONG)
                         .show();
 
+            } catch (TaskCancelledException e) {
+                e.printStackTrace();
+                Log.d("DownloadManager|" + getName(), "Download cancelled. Skipping the rest");
             }
+        } else {
+            downloadDocuments = oldDocuments;
+            updateDownloadDocumentsOffline();
         }
         return null;
     }
 
     @Override
-    protected void onPostExecute(Integer result) {
+    protected void onPostExecute(Void result) {
         progressDialog.cancel();
         localScan();
+    }
+
+    @Override
+    protected void onCancelled(Void result) {
+        onPostExecute(result);
+    }
+
+    public class TaskCancelledException extends Exception {
+        public TaskCancelledException() {
+
+        }
+
+        public TaskCancelledException(String message) {
+            super(message);
+        }
+
+        public TaskCancelledException(Throwable cause) {
+            super(cause);
+        }
+
+        public TaskCancelledException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 
     /* Listener stuff */
