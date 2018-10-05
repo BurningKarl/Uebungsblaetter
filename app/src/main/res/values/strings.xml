@@ -10,6 +10,7 @@
     <string name="stickied_titles">Oben angeheftete Dokumente</string>
     <string name="username">Nutzername</string>
     <string name="password">Passwort</string>
+    <string name="create">Erstellen</string>
     <string name="save">Speichern</string>
     <string name="delete">Löschen</string>
 
@@ -23,15 +24,17 @@
 
     <string name="not_a_valid_number">Dies ist keine gültige Zahl</string>
     <string name="not_a_valid_url">Dies ist keine gültige URL</string>
+    <string name="not_a_valid_name">Dies ist kein gültiger Name</string>
     <string name="download_failed_index_file">Das Herunterladen der Übersicht ist fehlgeschlagen</string>
     <string name="download_failed">Das Herunterladen der Dokumente ist fehlgeschlagen</string>
     <string name="documents_inaccessible">Einige Dokumente sind gesperrt</string>
     <string name="documents_unauthorized">Einige Dokumente sind mit einem Passwort geschützt</string>
 
     <!-- TODO: Think of a better name than website -->
-    <string name="add_website">Webseite hinzufügen</string>
-    <string name="delete_website">Webseite löschen</string>
-    <string name="delete_website_are_you_sure">Willst du diese Webseite wirklich löschen?</string>
+    <string name="add_tab">Webseite hinzufügen</string>
+    <string name="new_tab">Neue Webseite</string>
+    <string name="delete_tab">Webseite löschen</string>
+    <string name="delete_tab_are_you_sure">Willst du diese Webseite wirklich löschen?</string>
 
     <string name="unable_to_delete_last_tab">Die letzte Webseite kann nicht gelöscht werden.</string>
 

@@ -127,6 +127,10 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
                                 //titleMap
                                 String title = titleInput.getText().toString();
                                 if (!title.equals(dd.title)) {
+                                    // TODO: Changing the title needs to trigger completeDownloadOffline
+                                    // because currently changing the title does not affect
+                                    // the order but, when the new title matches stickiedTitles
+                                    // the order should change
                                     dd.title = title;
                                     manager.getTitleMap().put(dd.titleId, title);
                                 }
@@ -197,12 +201,20 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
                             public void onClick(DialogInterface dialogInterface, int which) {
                                 //name
                                 boolean nameChanged = false;
-                                String name = nameInput.getText().toString();
-                                if (!name.equals(manager.getName())) {
+                                String name = nameInput.getText().toString().trim();
+                                if (!name.isEmpty()) {
+                                    if (!name.equals(manager.getName())) {
+                                        Log.d("DownloadDocsAdapter|" + manager.getName(),
+                                                "name changed: " + name);
+                                        manager.setName(name);
+                                        nameChanged = true;
+                                    }
+                                } else {
                                     Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                            "Name changed: " + name);
-                                    manager.setName(name);
-                                    nameChanged = true;
+                                            "nameInput.getText() is not a valid name");
+                                    Snackbar.make(MainActivity.contentView,
+                                            R.string.not_a_valid_name, Snackbar.LENGTH_SHORT)
+                                            .show();
                                 }
                                 //url
                                 boolean urlChanged = false;
@@ -210,7 +222,7 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
                                     URL url = new URL(urlInput.getText().toString());
                                     if (!url.equals(manager.getDirectoryURL())) {
                                         Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                                "URL changed: " + url.toString());
+                                                "url changed: " + url.toString());
                                         manager.setDirectoryURL(url);
                                         urlChanged = true;
                                     }
