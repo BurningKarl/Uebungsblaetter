@@ -1,5 +1,6 @@
 package com.karlwelzel.uebungsblaetter;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -14,7 +15,8 @@ import android.view.View;
  */
 
 public class DialogManager {
-    // TODO: Use TextInputLayout.setError to display errors instead of Snackbars
+    // TODO: Use TextInputLayout.setError to display errors instead of a Snackbar
+    // Prevent the user from submitting with invalid inputs
     public static void openDownloadDocumentSettings(
             final DownloadDocument document, Context context, String title,
             @StringRes int positiveButton, String titleDefault, String pointsDefault,
@@ -22,6 +24,7 @@ public class DialogManager {
             final OnDownloadDocumentSettingsChangedListener listener) {
         Log.d("DialogManager", "openDownloadDocumentSettings: opening dialog");
         LayoutInflater inflater = LayoutInflater.from(context);
+        @SuppressLint("InflateParams")
         View dialogView = inflater.inflate(R.layout.dialog_download_document_settings, null);
         final TextInputEditText titleInput = dialogView.findViewById(R.id.title_input);
         final TextInputEditText pointsInput = dialogView.findViewById(R.id.points_input);
@@ -50,20 +53,13 @@ public class DialogManager {
 
     }
 
-    public static void openDownloadDocumentSettings(
-            final DownloadDocument document, Context context, String title,
-            @StringRes int positiveButton,
-            final OnDownloadDocumentSettingsChangedListener listener) {
-        openDownloadDocumentSettings(document, context, title, positiveButton, "", "",
-                "", listener);
-    }
-
     public static void openDownloadManagerSettings(
             Context context, String title, @StringRes int positiveButton, String nameDefault,
             String urlDefault, String maximumPointsDefault, String sheetRegexDefault,
             String stickiedTitlesDefault, String usernameDefault, String passwordDefault,
             final OnDownloadManagerSettingsChangedListener listener) {
         LayoutInflater inflater = LayoutInflater.from(context);
+        @SuppressLint("InflateParams")
         View dialogView = inflater.inflate(R.layout.dialog_download_manager_settings, null);
         final TextInputEditText nameInput = dialogView.findViewById(R.id.name_input);
         final TextInputEditText urlInput = dialogView.findViewById(R.id.url_input);

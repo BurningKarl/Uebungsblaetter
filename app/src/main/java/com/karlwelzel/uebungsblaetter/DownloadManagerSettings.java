@@ -8,7 +8,7 @@ import java.util.HashMap;
 public class DownloadManagerSettings {
     private String name;
     private URL directoryURL;
-    private File parentDirectory;
+    private final File parentDirectory;
     private File directory;
     private String managerID;
 
@@ -42,15 +42,6 @@ public class DownloadManagerSettings {
     public void setDirectoryURL(URL directoryURL) {
         this.directoryURL = directoryURL;
         this.managerID = directoryURL.toString().replaceAll("[^\\w\\s]", "");
-        this.directory = new File(parentDirectory, managerID);
-    }
-
-    public File getParentDirectory() {
-        return parentDirectory;
-    }
-
-    public void setParentDirectory(File parentDirectory) {
-        this.parentDirectory = parentDirectory;
         this.directory = new File(parentDirectory, managerID);
     }
 

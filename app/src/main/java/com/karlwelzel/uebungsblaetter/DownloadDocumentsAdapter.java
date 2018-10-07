@@ -1,13 +1,13 @@
 package com.karlwelzel.uebungsblaetter;
 
 import android.content.ActivityNotFoundException;
-import android.content.Context;
 import android.content.Intent;
 import android.database.DataSetObserver;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.support.annotation.NonNull;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.FileProvider;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -16,9 +16,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.TwoLineListItem;
 
 import java.io.File;
 import java.net.MalformedURLException;
@@ -36,28 +36,27 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         DialogManager.OnDownloadDocumentSettingsChangedListener,
         DialogManager.OnDownloadManagerSettingsChangedListener {
 
-    private static final int itemLayoutId = R.layout.sheet_listview_item;
+    private static final int ITEM_LAYOUT_ID = R.layout.sheet_listview_item;
+
+    private final CoordinatorLayout contentLayout;
     private final TextView pointsView;
-
-    public DownloadManager getManager() {
-        return manager;
-    }
-
     private DownloadManager manager;
     private SwipeRefreshLayout swipeRefreshLayout = null;
-    private OnManagerChangedListener managerChangedListener;
-    private OnDownloadRequestedListener downloadRequestedListener;
+    private final OnManagerChangedListener managerChangedListener;
+    private final OnDownloadRequestedListener downloadRequestedListener;
 
     public DownloadDocumentsAdapter(
-            @NonNull Context context, TextView pointsView, DownloadManager manager,
+            @NonNull MainActivity activity, TextView pointsView, DownloadManager manager,
             @NonNull OnManagerChangedListener managerChangedListener,
             @NonNull OnDownloadRequestedListener downloadRequestedListener) {
-        super(context, itemLayoutId);
+        super(activity, ITEM_LAYOUT_ID);
+        this.contentLayout = activity.findViewById(R.id.contentLayout);
         this.pointsView = pointsView;
         this.manager = manager;
         this.managerChangedListener = managerChangedListener;
         this.downloadRequestedListener = downloadRequestedListener;
-        this.manager.setOnListUpdateListener(this);
+
+        manager.setAdapter(this);
         registerDataSetObserver(new DataSetObserver() {
             @Override
             public void onChanged() {
@@ -65,6 +64,15 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
                 updatePointsViewText();
             }
         });
+    }
+
+    /* Getter and setter methods */
+    public CoordinatorLayout getContentLayout() {
+        return contentLayout;
+    }
+
+    public DownloadManager getManager() {
+        return manager;
     }
 
     /* Helper functions */
@@ -101,7 +109,7 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         }
     }
 
-    private void openDownloadDocumentSettings(final DownloadDocument dd) {
+    private void openDownloadDocumentSettings(final DownloadDocument document) {
         /* Opens a dialog to edit the DownloadDocument:
          * - title
          * - points
@@ -111,15 +119,15 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         Log.d("DownloadDocsAdapter|" + manager.getName(), "openDownloadDocumentSettings");
 
         String pointsDefault, maximumPointsDefault;
-        if (dd.getPoints() < 0) {
+        if (document.getPoints() < 0) {
             pointsDefault = "";
             maximumPointsDefault = Integer.toString(manager.getMaximumPoints());
         } else {
-            pointsDefault = Double.toString(dd.getPoints());
-            maximumPointsDefault = Integer.toString(dd.getMaximumPoints());
+            pointsDefault = Double.toString(document.getPoints());
+            maximumPointsDefault = Integer.toString(document.getMaximumPoints());
         }
-        DialogManager.openDownloadDocumentSettings(dd, getContext(), dd.title, R.string.save,
-                dd.title, pointsDefault, maximumPointsDefault, this);
+        DialogManager.openDownloadDocumentSettings(document, getContext(), document.title, R.string.save,
+                document.title, pointsDefault, maximumPointsDefault, this);
     }
 
     @Override
@@ -136,7 +144,7 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         } else {
             Log.d("DownloadDocsAdapter|" + manager.getName(),
                     "titleInput is not a valid title");
-            Snackbar.make(MainActivity.contentView,
+            Snackbar.make(contentLayout,
                     R.string.not_a_valid_name, Snackbar.LENGTH_SHORT)
                     .show();
             return;
@@ -167,7 +175,7 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         } catch (NumberFormatException e) {
             Log.d("DownloadDocsAdapter|" + manager.getName(),
                     "maximumPointsInput is not a number");
-            Snackbar.make(MainActivity.contentView,
+            Snackbar.make(contentLayout,
                     R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
                     .show();
             return;
@@ -219,8 +227,8 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
     @Override
     public void onDownloadManagerSettingsChanged(
             String nameInput, String urlInput, String maximumPointsInput,
-            String sheetRegexInput, String stickiedTitlesInput, String usernameInput,
-            String passwordInput) {
+            String sheetRegex, String stickiedTitlesInput, String username,
+            String password) {
         //name
         boolean nameChanged = false;
         String name = nameInput.trim();
@@ -233,7 +241,7 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         } else {
             Log.d("DownloadDocsAdapter|" + manager.getName(),
                     "nameInput is not a valid name");
-            Snackbar.make(MainActivity.contentView,
+            Snackbar.make(contentLayout,
                     R.string.not_a_valid_name, Snackbar.LENGTH_SHORT)
                     .show();
             return;
@@ -251,7 +259,7 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         } catch (MalformedURLException e) {
             Log.d("DownloadDocsAdapter|" + manager.getName(),
                     "urlInput is not a valid url");
-            Snackbar.make(MainActivity.contentView,
+            Snackbar.make(contentLayout,
                     R.string.not_a_valid_url, Snackbar.LENGTH_SHORT)
                     .show();
             return;
@@ -269,14 +277,13 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         } catch (NumberFormatException e) {
             Log.d("DownloadDocsAdapter|" + manager.getName(),
                     "maximumPointsInput is not a number");
-            Snackbar.make(MainActivity.contentView,
+            Snackbar.make(contentLayout,
                     R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
                     .show();
             return;
         }
         //sheetRegex
         boolean sheetRegexChanged = false;
-        String sheetRegex = sheetRegexInput;
         if (!sheetRegex.equals(manager.getSheetRegex())) {
             Log.d("DownloadDocsAdapter|" + manager.getName(),
                     "SheetRegex changed: " + sheetRegex);
@@ -295,8 +302,6 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
 
         //username and password
         boolean credentialsChanged = false;
-        String username = usernameInput;
-        String password = passwordInput;
         if (!username.equals(manager.getUsername())) {
             Log.d("DownloadDocsAdapter|" + manager.getName(),
                     "username changed: " + username);
@@ -353,9 +358,9 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         manager.downloadOffline();
     }
 
-    public void onListUpdate(DownloadDocument... files) {
+    public void onListUpdate(DownloadDocument... documents) {
         clear();
-        addAll(files);
+        addAll(documents);
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setRefreshing(false);
             swipeRefreshLayout = null;
@@ -373,31 +378,30 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
         TextView titleView, subtitleView;
-        TwoLineListItem textLayout;
+        LinearLayout textLayout;
 
         // Check if an existing view is being reused, otherwise inflate the view
         if (convertView == null) {
-            convertView = LayoutInflater.from(getContext()).inflate(itemLayoutId, parent, false);
+            convertView = LayoutInflater.from(getContext()).inflate(ITEM_LAYOUT_ID, parent, false);
             textLayout = convertView.findViewById(R.id.textLayout);
             titleView = convertView.findViewById(R.id.titleText);
             subtitleView = convertView.findViewById(R.id.subtitleText);
             textLayout.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    // TODO: Replace dd by document
-                    DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
+                    DownloadDocument document = (DownloadDocument) v.getTag(R.id.file_tag);
                     Log.d("DownloadDocsAdapter|" + manager.getName(),
-                            "Opened: " + dd.title);
-                    openPDFDocument(dd.file);
+                            "Opened: " + document.title);
+                    openPDFDocument(document.file);
                 }
             });
             textLayout.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
                 public boolean onLongClick(View v) {
-                    DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
+                    DownloadDocument document = (DownloadDocument) v.getTag(R.id.file_tag);
                     Log.d("DownloadDocsAdapter|" + manager.getName(),
-                            "Opened settings: " + dd.title);
-                    openDownloadDocumentSettings(dd);
+                            "Opened settings: " + document.title);
+                    openDownloadDocumentSettings(document);
                     return true;
                 }
             });
@@ -415,9 +419,14 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         DownloadDocument downloadDocument = getItem(position);
 
         // Populate the data into the template view using the data object
-        titleView.setText(downloadDocument.title);
-        textLayout.setTag(R.id.file_tag, downloadDocument);
-        subtitleView.setText(downloadDocument.getSubtitle());
+        if (downloadDocument != null) {
+            titleView.setText(downloadDocument.title);
+            textLayout.setTag(R.id.file_tag, downloadDocument);
+            subtitleView.setText(downloadDocument.getSubtitle());
+        } else {
+            Log.e("DownloadDocsAdapter|" + getManager().getName(),
+                    "A DownloadDocument in the adapters list is null!");
+        }
 
         // Return the completed view to render on screen
         return convertView;
@@ -433,10 +442,10 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
     }
 
     private static final class ViewHolder {
-        private final TwoLineListItem textLayout;
+        private final LinearLayout textLayout;
         private final TextView titleView, subtitleView;
 
-        public ViewHolder(TwoLineListItem textLayout, TextView titleView, TextView subtitleView) {
+        public ViewHolder(LinearLayout textLayout, TextView titleView, TextView subtitleView) {
             this.textLayout = textLayout;
             this.titleView = titleView;
             this.subtitleView = subtitleView;

@@ -10,6 +10,7 @@ import java.util.Locale;
  * Created by karl on 19.10.17.
  */
 
+@SuppressWarnings("CanBeFinal")
 public class DownloadDocument {
     public URL url;
     public File file;

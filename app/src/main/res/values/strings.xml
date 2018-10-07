@@ -15,7 +15,6 @@
     <string name="delete">Löschen</string>
 
     <string name="sheet_title_format">Blatt %d</string>
-    <string name="sheet_title_regex">Blatt (\\d+)</string>
 
     <string name="points_view_prefix">Punkte: </string>
 

@@ -2,12 +2,12 @@ package com.karlwelzel.uebungsblaetter;
 
 import android.Manifest;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
@@ -17,7 +17,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -53,8 +52,6 @@ public class MainActivity extends AppCompatActivity implements
     private static final String LINEAR_ALGEBRA_URL = "http://www.math.uni-bonn.de/people/gjasso/teaching/sose18/v1g4/";
     private static final String LOGIC_URL = "http://www.math.uni-bonn.de/ag/logik/teaching/2018SS/logik.shtml";
 
-    private static Context activityContext;
-
     private File downloadDirectory;
 
     private ArrayList<DownloadManager> managers;
@@ -62,16 +59,12 @@ public class MainActivity extends AppCompatActivity implements
 
     private SharedPreferences preferences;
 
-    public static View contentView;
+    private CoordinatorLayout contentLayout;
     private TextView pointsView;
     private ListView listView;
     private TabLayout navigationBar;
     private TabLayout.Tab activeTab;
     private SwipeRefreshLayout swipeRefreshLayout;
-
-    public static Context getContext() {
-        return activityContext;
-    }
 
     /* Permissions */
     private void verifyPermissions() {
@@ -125,7 +118,7 @@ public class MainActivity extends AppCompatActivity implements
         ArrayList<DownloadManagerSettings> managerSettings = new Gson().fromJson(dataString, collectionType);
         ArrayList<DownloadManager> downloadManagers = new ArrayList<>();
         for (DownloadManagerSettings settings : managerSettings) {
-            downloadManagers.add(new DownloadManager(settings));
+            downloadManagers.add(new DownloadManager(this, settings));
         }
         return downloadManagers;
     }
@@ -151,14 +144,14 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onDownloadManagerSettingsChanged(
-            String nameInput, String urlInput, String maximumPointsInput, String sheetRegexInput,
-            String stickiedTitlesInput, String usernameInput, String passwordInput) {
+            String nameInput, String urlInput, String maximumPointsInput, String sheetRegex,
+            String stickiedTitlesInput, String username, String password) {
         Log.d("MainActivity", "new name: " + nameInput);
         String name = nameInput.trim();
         if (name.isEmpty()) {
             Log.d("MainActivity",
                     "nameInput is not a valid name");
-            Snackbar.make(MainActivity.contentView,
+            Snackbar.make(contentLayout,
                     R.string.not_a_valid_name, Snackbar.LENGTH_SHORT)
                     .show();
             return;
@@ -171,7 +164,7 @@ public class MainActivity extends AppCompatActivity implements
         } catch (MalformedURLException e) {
             Log.d("MainActivity",
                     "urlInput is not a valid url");
-            Snackbar.make(MainActivity.contentView,
+            Snackbar.make(contentLayout,
                     R.string.not_a_valid_url, Snackbar.LENGTH_SHORT)
                     .show();
             return;
@@ -184,13 +177,12 @@ public class MainActivity extends AppCompatActivity implements
         } catch (NumberFormatException e) {
             Log.d("MainActivity",
                     "maximumPointsInput is not a number");
-            Snackbar.make(MainActivity.contentView,
+            Snackbar.make(contentLayout,
                     R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
                     .show();
             return;
         }
         //sheetRegex
-        String sheetRegex = sheetRegexInput;
         Log.d("MainActivity", "New sheetRegex: " + sheetRegex);
 
         //stickiedTitles
@@ -199,9 +191,7 @@ public class MainActivity extends AppCompatActivity implements
         ArrayList<String> stickiedTitles = new ArrayList<>(Arrays.asList(stickiedTitlesArray));
 
         //username and password
-        String username = usernameInput;
         Log.d("MainActivity", "New username: " + username);
-        String password = passwordInput;
         Log.d("MainActivity", "New password: " + password);
 
         addDownloadManager(name, url, maximumPoints, sheetRegex,
@@ -211,7 +201,7 @@ public class MainActivity extends AppCompatActivity implements
     private void addDownloadManager(
             String name, URL url, int maximumPoints, String sheetRegex,
             ArrayList<String> stickiedTitles, String username, String password) {
-        DownloadManager manager = new DownloadManager(name, url, downloadDirectory);
+        DownloadManager manager = new DownloadManager(this, name, url, downloadDirectory);
         manager.setMaximumPoints(maximumPoints);
         manager.setSheetRegex(sheetRegex);
         manager.setStickiedTitles(stickiedTitles);
@@ -227,7 +217,7 @@ public class MainActivity extends AppCompatActivity implements
         navigationBar.addTab(tab);
         onManagerChanged();
         tab.select();
-        // TODO: Start downloading
+        onDownloadRequested(true);
     }
 
     public void openDeleteDownloadManagerDialog() {
@@ -247,7 +237,7 @@ public class MainActivity extends AppCompatActivity implements
     public void deleteActiveDownloadManager() {
         // Deletes the tab, adapter and download manager. Be careful!
         if (managers.size() <= 1) {
-            Snackbar.make(contentView, R.string.unable_to_delete_last_tab, Snackbar.LENGTH_SHORT)
+            Snackbar.make(contentLayout, R.string.unable_to_delete_last_tab, Snackbar.LENGTH_SHORT)
                     .show();
         } else {
             DownloadDocumentsAdapter adapter = (DownloadDocumentsAdapter) listView.getAdapter();
@@ -260,6 +250,7 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
+    @SuppressWarnings("unused")
     public void deleteAllDownloadManagers() { // this for debug purposes only
         SharedPreferences.Editor editor = preferences.edit();
         editor.remove("managers");
@@ -270,7 +261,12 @@ public class MainActivity extends AppCompatActivity implements
     public void onManagerChanged() {
         saveDownloadManagers();
         for (int i = 0; i < navigationBar.getTabCount(); i++) {
-            navigationBar.getTabAt(i).setText(managers.get(i).getName());
+            TabLayout.Tab tab = navigationBar.getTabAt(i);
+            if (tab != null) {
+                tab.setText(managers.get(i).getName());
+            } else {
+                Log.e("MainActivity", "navigationBar.getTabAt(" + i + ") is null!");
+            }
         }
     }
 
@@ -352,14 +348,13 @@ public class MainActivity extends AppCompatActivity implements
         if (savedInstanceState != null) {
             Log.d("onCreate", "savedInstanceState provided");
         }
-        activityContext = this;
         setContentView(R.layout.activity_main);
 
         verifyPermissions();
 
         downloadDirectory = new File(getExternalFilesDir(null), DIRECTORY_NAME);
 
-        contentView = findViewById(android.R.id.content);
+        contentLayout = findViewById(R.id.contentLayout);
         pointsView = findViewById(R.id.points_view);
         listView = findViewById(R.id.sheets_list_view);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
@@ -376,18 +371,23 @@ public class MainActivity extends AppCompatActivity implements
                     logicDownloadManager = null;
             try {
                 analysisDownloadManager = new DownloadManager(
+                        this,
                         "Ana",
                         new URL(ANALYSIS_URL),
                         downloadDirectory);
                 algorithmicMathematicsDownloadManager = new DownloadManager(
+                        this,
                         "AlMa",
                         new URL(ALGORITHMIC_MATHEMATICS_URL),
                         downloadDirectory);
                 linearAlgebraDownloadManager = new DownloadManager(
+                        this,
                         "LA",
                         new URL(LINEAR_ALGEBRA_URL),
                         downloadDirectory);
-                logicDownloadManager = new DownloadManager("Log",
+                logicDownloadManager = new DownloadManager(
+                        this,
+                        "Log",
                         new URL(LOGIC_URL),
                         downloadDirectory);
 
@@ -462,7 +462,13 @@ public class MainActivity extends AppCompatActivity implements
 
         if (savedInstanceState != null) {
             int selectedTab = savedInstanceState.getInt(STATE_TAB);
-            navigationBar.getTabAt(selectedTab).select();
+            TabLayout.Tab tab = navigationBar.getTabAt(selectedTab);
+            if (tab != null) {
+                tab.select();
+            } else {
+                Log.e("MainActivity", "navigationBar.getTabAt(" + selectedTab + ") is null!");
+            }
+
         }
 
         //deleteAllDownloadManagers();
