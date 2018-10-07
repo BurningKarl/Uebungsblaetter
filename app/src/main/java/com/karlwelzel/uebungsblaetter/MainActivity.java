@@ -10,13 +10,11 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
-import android.support.design.widget.TextInputEditText;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -35,8 +33,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity implements
-        DownloadDocumentsAdapter.OnManagerChangedListener, TabLayout.OnTabSelectedListener,
-        SwipeRefreshLayout.OnRefreshListener {
+        TabLayout.OnTabSelectedListener, SwipeRefreshLayout.OnRefreshListener,
+        DownloadDocumentsAdapter.OnManagerChangedListener,
+        DownloadDocumentsAdapter.OnDownloadRequestedListener,
+        DialogManager.OnDownloadManagerSettingsChangedListener {
 
     private static final int PERMISSION_REQUEST_CODE = 1;
     private static final String[] PERMISSIONS = {
@@ -144,113 +144,73 @@ public class MainActivity extends AppCompatActivity implements
 
     public void openAddDownloadManagerDialog() {
         Log.d("MainActivity", "openAddDownloadManagerDialog");
-        LayoutInflater inflater = LayoutInflater.from(getContext());
-        View dialogView = inflater.inflate(R.layout.dialog_download_manager_settings, null);
-        final TextInputEditText nameInput = dialogView.findViewById(R.id.name_input);
-        final TextInputEditText urlInput = dialogView.findViewById(R.id.url_input);
-        final TextInputEditText maximumPointsInput = dialogView.findViewById(R.id.maximum_points_input);
-        final TextInputEditText sheetRegexInput = dialogView.findViewById(R.id.sheet_regex_input);
-        final TextInputEditText stickiedTitlesInput = dialogView.findViewById(R.id.stickied_titles_input);
-        final TextInputEditText usernameInput = dialogView.findViewById(R.id.username_input);
-        final TextInputEditText passwordInput = dialogView.findViewById(R.id.password_input);
-        new AlertDialog.Builder(getContext())
-                .setTitle(R.string.new_tab)
-                .setView(dialogView)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.create,
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int which) {
-                                /* TODO: Move this logic to DownloadManager
-                                 * openDownloadManagerDialog()
-                                 * openDownloadManagerSettingsDialog([defaults for the fields])
-                                 * openDownloadDocumentSettingsDialog()
-                                 * openDownloadDocumentSettingsDialog([defaults for the fields])
-                                 * Implement a checkDownloadManagerInput to avoid showing
-                                 * multiple Snackbars atop of each other
-                                 */
-                                //name
-                                boolean nameValid = false;
-                                Log.d("MainActivity",
-                                        "New name: " + nameInput.getText().toString());
-                                String name = nameInput.getText().toString().trim();
-                                if (!name.isEmpty()) {
-                                    nameValid = true;
-                                } else {
-                                    Log.d("MainActivity",
-                                            "nameInput.getText() is not a valid name");
-                                    Snackbar.make(MainActivity.contentView,
-                                            R.string.not_a_valid_name, Snackbar.LENGTH_SHORT)
-                                            .show();
-                                }
-                                //url
-                                boolean urlValid = false;
-                                Log.d("MainActivity",
-                                        "New url: " + urlInput.getText().toString());
-                                URL url = null;
-                                try {
-                                    url = new URL(urlInput.getText().toString());
-                                    urlValid = true;
-                                } catch (MalformedURLException e) {
-                                    Log.d("MainActivity",
-                                            "urlInput.getText() is not a valid url");
-                                    Snackbar.make(MainActivity.contentView,
-                                            R.string.not_a_valid_url, Snackbar.LENGTH_SHORT)
-                                            .show();
-                                }
-                                //maximumPoints
-                                boolean maximumPointsValid = false;
-                                Log.d("MainActivity",
-                                        "New maximumPoints: " + maximumPointsInput.getText().toString());
-                                int maximumPoints = 0;
-                                try {
-                                    String inputText = maximumPointsInput.getText().toString();
-                                    maximumPoints = Integer.parseInt(inputText);
-                                    maximumPointsValid = true;
-                                } catch (NumberFormatException e) {
-                                    Log.d("MainActivity",
-                                            "maximumPointsInput.getText() is not a number");
-                                    Snackbar.make(MainActivity.contentView,
-                                            R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
-                                            .show();
-                                }
-                                //sheetRegex
-                                boolean sheetRegexValid = true;
-                                String sheetRegex = sheetRegexInput.getText().toString();
-                                Log.d("MainActivity",
-                                        "New sheetRegex: " + sheetRegex);
 
-                                //stickiedTitles
-                                boolean stickiedTitlesValid = true;
-                                String inputText = stickiedTitlesInput.getText().toString();
-                                Log.d("MainActivity",
-                                        "New stickiedTitles: " + inputText);
-                                String[] stickiedTitlesArray = inputText.split("\n+");
-                                ArrayList<String> stickiedTitles =
-                                        new ArrayList<>(Arrays.asList(stickiedTitlesArray));
-
-                                //username and password
-                                boolean credentialsValid = true;
-                                String username = usernameInput.getText().toString();
-                                Log.d("MainActivity",
-                                        "New username: " + username);
-                                String password = passwordInput.getText().toString();
-                                Log.d("MainActivity",
-                                        "New password: " + password);
-
-                                if (nameValid && urlValid && maximumPointsValid && sheetRegexValid
-                                        && stickiedTitlesValid && credentialsValid) {
-                                    addDownloadManager(name, url, maximumPoints, sheetRegex,
-                                            stickiedTitles, username, password);
-                                }
-                            }
-                        })
-                .show();
+        DialogManager.openDownloadManagerSettings(this, R.string.new_tab, R.string.create,
+                this);
     }
 
-    private void addDownloadManager(String name, URL url, int maximumPoints, String sheetRegex,
-                                    ArrayList<String> stickiedTitles, String username,
-                                    String password) {
+    @Override
+    public void onDownloadManagerSettingsChanged(
+            String nameInput, String urlInput, String maximumPointsInput, String sheetRegexInput,
+            String stickiedTitlesInput, String usernameInput, String passwordInput) {
+        Log.d("MainActivity", "new name: " + nameInput);
+        String name = nameInput.trim();
+        if (name.isEmpty()) {
+            Log.d("MainActivity",
+                    "nameInput is not a valid name");
+            Snackbar.make(MainActivity.contentView,
+                    R.string.not_a_valid_name, Snackbar.LENGTH_SHORT)
+                    .show();
+            return;
+        }
+        //url
+        Log.d("MainActivity", "New url: " + urlInput);
+        URL url;
+        try {
+            url = new URL(urlInput);
+        } catch (MalformedURLException e) {
+            Log.d("MainActivity",
+                    "urlInput is not a valid url");
+            Snackbar.make(MainActivity.contentView,
+                    R.string.not_a_valid_url, Snackbar.LENGTH_SHORT)
+                    .show();
+            return;
+        }
+        //maximumPoints
+        Log.d("MainActivity", "New maximumPoints: " + maximumPointsInput);
+        int maximumPoints;
+        try {
+            maximumPoints = Integer.parseInt(maximumPointsInput);
+        } catch (NumberFormatException e) {
+            Log.d("MainActivity",
+                    "maximumPointsInput is not a number");
+            Snackbar.make(MainActivity.contentView,
+                    R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
+                    .show();
+            return;
+        }
+        //sheetRegex
+        String sheetRegex = sheetRegexInput;
+        Log.d("MainActivity", "New sheetRegex: " + sheetRegex);
+
+        //stickiedTitles
+        Log.d("MainActivity", "New stickiedTitles: " + stickiedTitlesInput);
+        String[] stickiedTitlesArray = stickiedTitlesInput.split("\n+");
+        ArrayList<String> stickiedTitles = new ArrayList<>(Arrays.asList(stickiedTitlesArray));
+
+        //username and password
+        String username = usernameInput;
+        Log.d("MainActivity", "New username: " + username);
+        String password = passwordInput;
+        Log.d("MainActivity", "New password: " + password);
+
+        addDownloadManager(name, url, maximumPoints, sheetRegex,
+                stickiedTitles, username, password);
+    }
+
+    private void addDownloadManager(
+            String name, URL url, int maximumPoints, String sheetRegex,
+            ArrayList<String> stickiedTitles, String username, String password) {
         DownloadManager manager = new DownloadManager(name, url, downloadDirectory);
         manager.setMaximumPoints(maximumPoints);
         manager.setSheetRegex(sheetRegex);
@@ -258,15 +218,16 @@ public class MainActivity extends AppCompatActivity implements
         manager.setUsername(username);
         manager.setPassword(password);
         managers.add(manager);
-        DownloadDocumentsAdapter adapter = new DownloadDocumentsAdapter(this, pointsView, manager);
-        adapter.setListener(this);
+        DownloadDocumentsAdapter adapter = new DownloadDocumentsAdapter(
+                this, pointsView, manager, this, this);
         adapters.add(adapter);
         TabLayout.Tab tab = navigationBar.newTab();
         tab.setText(manager.getName());
         tab.setTag(adapter);
         navigationBar.addTab(tab);
         onManagerChanged();
-        // TODO: Automatically switch to the created tab
+        tab.select();
+        // TODO: Start downloading
     }
 
     public void openDeleteDownloadManagerDialog() {
@@ -291,7 +252,7 @@ public class MainActivity extends AppCompatActivity implements
         } else {
             DownloadDocumentsAdapter adapter = (DownloadDocumentsAdapter) listView.getAdapter();
             Log.d("MainActivity", "Delete manager " + adapter.getManager().getName()
-                    + " on tab " + activeTab.getText());
+                    + " on tab " + activeTab);
             managers.remove(adapter.getManager());
             adapters.remove(adapter);
             navigationBar.removeTab(activeTab);
@@ -305,6 +266,7 @@ public class MainActivity extends AppCompatActivity implements
         editor.apply();
     }
 
+    @Override
     public void onManagerChanged() {
         saveDownloadManagers();
         for (int i = 0; i < navigationBar.getTabCount(); i++) {
@@ -313,8 +275,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void onManagerChanged(boolean downloadNecessary) {
-        onManagerChanged();
+    public void onDownloadRequested(boolean downloadNecessary) {
         if (downloadNecessary) {
             swipeRefreshLayout.setRefreshing(true);
             onRefresh();
@@ -484,8 +445,8 @@ public class MainActivity extends AppCompatActivity implements
 
         adapters = new ArrayList<>();
         for (DownloadManager manager : managers) {
-            DownloadDocumentsAdapter current = new DownloadDocumentsAdapter(this, pointsView, manager);
-            current.setListener(this);
+            DownloadDocumentsAdapter current = new DownloadDocumentsAdapter(
+                    this, pointsView, manager, this, this);
             adapters.add(current);
         }
 

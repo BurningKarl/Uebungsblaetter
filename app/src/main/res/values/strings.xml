@@ -30,12 +30,11 @@
     <string name="documents_inaccessible">Einige Dokumente sind gesperrt</string>
     <string name="documents_unauthorized">Einige Dokumente sind mit einem Passwort geschützt</string>
 
-    <!-- TODO: Think of a better name than website -->
-    <string name="add_tab">Webseite hinzufügen</string>
-    <string name="new_tab">Neue Webseite</string>
-    <string name="delete_tab">Webseite löschen</string>
-    <string name="delete_tab_are_you_sure">Willst du diese Webseite wirklich löschen?</string>
+    <string name="add_tab">Quelle hinzufügen</string>
+    <string name="new_tab">Neue Quelle</string>
+    <string name="delete_tab">Quelle löschen</string>
+    <string name="delete_tab_are_you_sure">Willst du diese Quelle wirklich löschen?</string>
 
-    <string name="unable_to_delete_last_tab">Die letzte Webseite kann nicht gelöscht werden.</string>
+    <string name="unable_to_delete_last_tab">Die letzte Quelle kann nicht gelöscht werden.</string>
 
 </resources>

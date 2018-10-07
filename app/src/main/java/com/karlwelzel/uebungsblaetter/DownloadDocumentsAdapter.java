@@ -1,9 +1,7 @@
 package com.karlwelzel.uebungsblaetter;
 
-import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.DataSetObserver;
 import android.net.Uri;
@@ -11,7 +9,6 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
-import android.support.design.widget.TextInputEditText;
 import android.support.v4.content.FileProvider;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.util.Log;
@@ -35,7 +32,9 @@ import java.util.Collection;
  */
 
 public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
-        implements DownloadManager.OnListUpdateListener {
+        implements DownloadManager.OnListUpdateListener,
+        DialogManager.OnDownloadDocumentSettingsChangedListener,
+        DialogManager.OnDownloadManagerSettingsChangedListener {
 
     private static final int itemLayoutId = R.layout.sheet_listview_item;
     private final TextView pointsView;
@@ -46,13 +45,18 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
 
     private DownloadManager manager;
     private SwipeRefreshLayout swipeRefreshLayout = null;
-    private OnManagerChangedListener listener = null;
+    private OnManagerChangedListener managerChangedListener;
+    private OnDownloadRequestedListener downloadRequestedListener;
 
-    public DownloadDocumentsAdapter(@NonNull Context context, TextView pointsView,
-                                    DownloadManager manager) {
+    public DownloadDocumentsAdapter(
+            @NonNull Context context, TextView pointsView, DownloadManager manager,
+            @NonNull OnManagerChangedListener managerChangedListener,
+            @NonNull OnDownloadRequestedListener downloadRequestedListener) {
         super(context, itemLayoutId);
         this.pointsView = pointsView;
         this.manager = manager;
+        this.managerChangedListener = managerChangedListener;
+        this.downloadRequestedListener = downloadRequestedListener;
         this.manager.setOnListUpdateListener(this);
         registerDataSetObserver(new DataSetObserver() {
             @Override
@@ -104,64 +108,94 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
          * - maximum points
          */
 
-        Log.d("DownloadDocsAdapter|" + manager.getName(),
-                "openDownloadDocumentSettings: " + dd.title);
-        LayoutInflater inflater = LayoutInflater.from(getContext());
-        View dialogView = inflater.inflate(R.layout.dialog_download_document_settings, null);
-        final TextInputEditText titleInput = dialogView.findViewById(R.id.title_input);
-        titleInput.setText(dd.title);
-        final TextInputEditText pointsInput = dialogView.findViewById(R.id.points_input);
-        if (dd.getPoints() >= 0) {
-            pointsInput.setText(Double.toString(dd.getPoints()));
+        Log.d("DownloadDocsAdapter|" + manager.getName(), "openDownloadDocumentSettings");
+
+        String pointsDefault, maximumPointsDefault;
+        if (dd.getPoints() < 0) {
+            pointsDefault = "";
+            maximumPointsDefault = Integer.toString(manager.getMaximumPoints());
+        } else {
+            pointsDefault = Double.toString(dd.getPoints());
+            maximumPointsDefault = Integer.toString(dd.getMaximumPoints());
         }
-        final TextInputEditText maximumPointsInput = dialogView.findViewById(R.id.maximum_points_input);
-        maximumPointsInput.setText(Integer.toString(dd.getMaximumPoints()));
-        new AlertDialog.Builder(getContext())
-                .setTitle(dd.title)
-                .setView(dialogView)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.save,
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int which) {
-                                //titleMap
-                                String title = titleInput.getText().toString();
-                                if (!title.equals(dd.title)) {
-                                    // TODO: Changing the title needs to trigger completeDownloadOffline
-                                    // because currently changing the title does not affect
-                                    // the order but, when the new title matches stickiedTitles
-                                    // the order should change
-                                    dd.title = title;
-                                    manager.getTitleMap().put(dd.titleId, title);
-                                }
+        DialogManager.openDownloadDocumentSettings(dd, getContext(), dd.title, R.string.save,
+                dd.title, pointsDefault, maximumPointsDefault, this);
+    }
 
-                                //points
-                                try {
-                                    String inputText = pointsInput.getText().toString();
-                                    dd.setPoints(Double.parseDouble(inputText));
-                                } catch (NumberFormatException e) {
-                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                            "pointsInput.getText() is not a number -> points deleted");
-                                    dd.setPoints(-1);
-                                }
+    @Override
+    public void onDownloadDocumentSettingsChanged(DownloadDocument document, String titleInput,
+                                                  String pointsInput, String maximumPointsInput) {
+        //titleMap
+        boolean titleChanged = false;
+        String title = titleInput.trim();
+        if (!title.isEmpty()) {
+            if (!title.equals(document.title)) {
+                Log.d("DownloadDocsAdapter|" + manager.getName(), "title changed: " + title);
+                titleChanged = true;
+            }
+        } else {
+            Log.d("DownloadDocsAdapter|" + manager.getName(),
+                    "titleInput is not a valid title");
+            Snackbar.make(MainActivity.contentView,
+                    R.string.not_a_valid_name, Snackbar.LENGTH_SHORT)
+                    .show();
+            return;
+        }
 
-                                //maximumPoints
-                                try {
-                                    String inputText = maximumPointsInput.getText().toString();
-                                    dd.setMaximumPoints(Integer.parseInt(inputText));
-                                } catch (NumberFormatException e) {
-                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                            "maximumPointsInput.getText() is not a number");
-                                    Snackbar.make(MainActivity.contentView,
-                                            R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
-                                            .show();
-                                }
+        //points
+        boolean pointsChanged = false;
+        double points;
+        try {
+            points = Double.parseDouble(pointsInput);
+        } catch (NumberFormatException e) {
+            points = -1;
+        }
+        if (points != document.getPoints()) {
+            Log.d("DownloadDocsAdapter|" + manager.getName(), "points changed: " + points);
+            pointsChanged = true;
+        }
 
-                                notifyDataSetChanged();
-                                manager.saveDownloadDocuments();
-                            }
-                        })
-                .show();
+        //maximumPoints
+        boolean maximumPointsChanged = false;
+        int maximumPoints;
+        try {
+            maximumPoints = Integer.parseInt(maximumPointsInput);
+            if (maximumPoints != document.getMaximumPoints()) {
+                Log.d("DownloadDocsAdapter|" + manager.getName(), "maximumPoints changed: " + maximumPoints);
+                maximumPointsChanged = true;
+            }
+        } catch (NumberFormatException e) {
+            Log.d("DownloadDocsAdapter|" + manager.getName(),
+                    "maximumPointsInput is not a number");
+            Snackbar.make(MainActivity.contentView,
+                    R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
+                    .show();
+            return;
+        }
+
+        if (titleChanged || pointsChanged || maximumPointsChanged) {
+            if (titleChanged) {
+                if (title.equals(document.titleId)) {
+                    manager.getTitleMap().remove(document.titleId);
+                } else {
+                    manager.getTitleMap().put(document.titleId, title);
+                }
+            }
+            if (pointsChanged) {
+                document.setPoints(points);
+            }
+            if (maximumPointsChanged) {
+                document.setMaximumPoints(maximumPoints);
+            }
+
+            if (titleChanged) {
+                managerChangedListener.onManagerChanged();
+                downloadRequestedListener.onDownloadRequested(false);
+            } else {
+                manager.saveDownloadDocuments();
+                notifyDataSetChanged();
+            }
+        }
     }
 
     public void openDownloadManagerSettings() {
@@ -175,133 +209,136 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
 
         Log.d("DownloadDocsAdapter|" + manager.getName(), "openDownloadManagerSettings");
 
-        LayoutInflater inflater = LayoutInflater.from(getContext());
-        View dialogView = inflater.inflate(R.layout.dialog_download_manager_settings, null);
-        final TextInputEditText nameInput = dialogView.findViewById(R.id.name_input);
-        nameInput.setText(manager.getName());
-        final TextInputEditText urlInput = dialogView.findViewById(R.id.url_input);
-        urlInput.setText(manager.getDirectoryURL().toString());
-        final TextInputEditText maximumPointsInput = dialogView.findViewById(R.id.maximum_points_input);
-        maximumPointsInput.setText(Integer.toString(manager.getMaximumPoints()));
-        final TextInputEditText sheetRegexInput = dialogView.findViewById(R.id.sheet_regex_input);
-        sheetRegexInput.setText(manager.getSheetRegex());
-        final TextInputEditText stickiedTitlesInput = dialogView.findViewById(R.id.stickied_titles_input);
-        stickiedTitlesInput.setText(concatWithNewlines(manager.getStickiedTitles()));
-        final TextInputEditText usernameInput = dialogView.findViewById(R.id.username_input);
-        usernameInput.setText(manager.getUsername());
-        final TextInputEditText passwordInput = dialogView.findViewById(R.id.password_input);
-        passwordInput.setText(manager.getPassword());
-        new AlertDialog.Builder(getContext())
-                .setTitle(manager.getName())
-                .setView(dialogView)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.save,
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int which) {
-                                //name
-                                boolean nameChanged = false;
-                                String name = nameInput.getText().toString().trim();
-                                if (!name.isEmpty()) {
-                                    if (!name.equals(manager.getName())) {
-                                        Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                                "name changed: " + name);
-                                        manager.setName(name);
-                                        nameChanged = true;
-                                    }
-                                } else {
-                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                            "nameInput.getText() is not a valid name");
-                                    Snackbar.make(MainActivity.contentView,
-                                            R.string.not_a_valid_name, Snackbar.LENGTH_SHORT)
-                                            .show();
-                                }
-                                //url
-                                boolean urlChanged = false;
-                                try {
-                                    URL url = new URL(urlInput.getText().toString());
-                                    if (!url.equals(manager.getDirectoryURL())) {
-                                        Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                                "url changed: " + url.toString());
-                                        manager.setDirectoryURL(url);
-                                        urlChanged = true;
-                                    }
-                                } catch (MalformedURLException e) {
-                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                            "urlInput.getText() is not a valid url");
-                                    Snackbar.make(MainActivity.contentView,
-                                            R.string.not_a_valid_url, Snackbar.LENGTH_SHORT)
-                                            .show();
-                                }
-                                //maximumPoints
-                                boolean maximumPointsChanged = false;
-                                try {
-                                    String inputText = maximumPointsInput.getText().toString();
-                                    int maximumPoints = Integer.parseInt(inputText);
-                                    if (maximumPoints != manager.getMaximumPoints()) {
-                                        Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                                "Maximum points changed: " + maximumPoints);
-                                        manager.setMaximumPoints(maximumPoints);
-                                        maximumPointsChanged = true;
-                                    }
-                                } catch (NumberFormatException e) {
-                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                            "maximumPointsInput.getText() is not a number");
-                                    Snackbar.make(MainActivity.contentView,
-                                            R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
-                                            .show();
-                                }
-                                //sheetRegex
-                                boolean sheetRegexChanged = false;
-                                String sheetRegex = sheetRegexInput.getText().toString();
-                                if (!sheetRegex.equals(manager.getSheetRegex())) {
-                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                            "SheetRegex changed: " + sheetRegex);
-                                    manager.setSheetRegex(sheetRegex);
-                                    sheetRegexChanged = true;
-                                }
-
-                                //stickiedTitles
-                                boolean stickiedTitlesChanged = false;
-                                String inputText = stickiedTitlesInput.getText().toString();
-                                String[] stickiedTitlesArray = inputText.split("\n+");
-                                ArrayList<String> stickiedTitles =
-                                        new ArrayList<>(Arrays.asList(stickiedTitlesArray));
-                                if (!stickiedTitles.equals(manager.getStickiedTitles())) {
-                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                            "stickiedTitles changed");
-                                    manager.setStickiedTitles(stickiedTitles);
-                                    stickiedTitlesChanged = true;
-                                }
-
-                                //username and password
-                                boolean credentialsChanged = false;
-                                String username = usernameInput.getText().toString();
-                                String password = passwordInput.getText().toString();
-                                if (!username.equals(manager.getUsername())) {
-                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                            "username changed: " + username);
-                                    manager.setUsername(username);
-                                    credentialsChanged = true;
-                                }
-                                if (!password.equals(manager.getPassword())) {
-                                    Log.d("DownloadDocsAdapter|" + manager.getName(),
-                                            "password changed: " + password);
-                                    manager.setPassword(password);
-                                    credentialsChanged = true;
-                                }
-
-
-                                if (urlChanged || credentialsChanged) {
-                                    notifyListener(true);
-                                } else if (maximumPointsChanged || sheetRegexChanged || nameChanged
-                                        || stickiedTitlesChanged) {
-                                    notifyListener(false);
-                                }
-                            }
-                        })
-                .show();
+        DialogManager.openDownloadManagerSettings(getContext(), manager.getName(),
+                R.string.save, manager.getName(), manager.getDirectoryURL().toString(),
+                Integer.toString(manager.getMaximumPoints()), manager.getSheetRegex(),
+                concatWithNewlines(manager.getStickiedTitles()), manager.getUsername(),
+                manager.getPassword(), this);
     }
+
+    @Override
+    public void onDownloadManagerSettingsChanged(
+            String nameInput, String urlInput, String maximumPointsInput,
+            String sheetRegexInput, String stickiedTitlesInput, String usernameInput,
+            String passwordInput) {
+        //name
+        boolean nameChanged = false;
+        String name = nameInput.trim();
+        if (!name.isEmpty()) {
+            if (!name.equals(manager.getName())) {
+                Log.d("DownloadDocsAdapter|" + manager.getName(),
+                        "name changed: " + name);
+                nameChanged = true;
+            }
+        } else {
+            Log.d("DownloadDocsAdapter|" + manager.getName(),
+                    "nameInput is not a valid name");
+            Snackbar.make(MainActivity.contentView,
+                    R.string.not_a_valid_name, Snackbar.LENGTH_SHORT)
+                    .show();
+            return;
+        }
+        //url
+        boolean urlChanged = false;
+        URL url;
+        try {
+            url = new URL(urlInput);
+            if (!url.equals(manager.getDirectoryURL())) {
+                Log.d("DownloadDocsAdapter|" + manager.getName(),
+                        "url changed: " + url.toString());
+                urlChanged = true;
+            }
+        } catch (MalformedURLException e) {
+            Log.d("DownloadDocsAdapter|" + manager.getName(),
+                    "urlInput is not a valid url");
+            Snackbar.make(MainActivity.contentView,
+                    R.string.not_a_valid_url, Snackbar.LENGTH_SHORT)
+                    .show();
+            return;
+        }
+        //maximumPoints
+        boolean maximumPointsChanged = false;
+        int maximumPoints;
+        try {
+            maximumPoints = Integer.parseInt(maximumPointsInput);
+            if (maximumPoints != manager.getMaximumPoints()) {
+                Log.d("DownloadDocsAdapter|" + manager.getName(),
+                        "Maximum points changed: " + maximumPoints);
+                maximumPointsChanged = true;
+            }
+        } catch (NumberFormatException e) {
+            Log.d("DownloadDocsAdapter|" + manager.getName(),
+                    "maximumPointsInput is not a number");
+            Snackbar.make(MainActivity.contentView,
+                    R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
+                    .show();
+            return;
+        }
+        //sheetRegex
+        boolean sheetRegexChanged = false;
+        String sheetRegex = sheetRegexInput;
+        if (!sheetRegex.equals(manager.getSheetRegex())) {
+            Log.d("DownloadDocsAdapter|" + manager.getName(),
+                    "SheetRegex changed: " + sheetRegex);
+            sheetRegexChanged = true;
+        }
+
+        //stickiedTitles
+        boolean stickiedTitlesChanged = false;
+        String[] stickiedTitlesArray = stickiedTitlesInput.split("\n+");
+        ArrayList<String> stickiedTitles = new ArrayList<>(Arrays.asList(stickiedTitlesArray));
+        if (!stickiedTitles.equals(manager.getStickiedTitles())) {
+            Log.d("DownloadDocsAdapter|" + manager.getName(),
+                    "stickiedTitles changed");
+            stickiedTitlesChanged = true;
+        }
+
+        //username and password
+        boolean credentialsChanged = false;
+        String username = usernameInput;
+        String password = passwordInput;
+        if (!username.equals(manager.getUsername())) {
+            Log.d("DownloadDocsAdapter|" + manager.getName(),
+                    "username changed: " + username);
+            credentialsChanged = true;
+        }
+        if (!password.equals(manager.getPassword())) {
+            Log.d("DownloadDocsAdapter|" + manager.getName(),
+                    "password changed: " + password);
+            credentialsChanged = true;
+        }
+
+        if (nameChanged) {
+            manager.setName(name);
+        }
+        if (urlChanged) {
+            manager.setDirectoryURL(url);
+        }
+        if (maximumPointsChanged) {
+            manager.setMaximumPoints(maximumPoints);
+        }
+        if (sheetRegexChanged) {
+            manager.setSheetRegex(sheetRegex);
+        }
+        if (stickiedTitlesChanged) {
+            manager.setStickiedTitles(stickiedTitles);
+        }
+        if (credentialsChanged) {
+            manager.setUsername(username);
+            manager.setPassword(password);
+        }
+
+        if (urlChanged || credentialsChanged) {
+            managerChangedListener.onManagerChanged();
+            downloadRequestedListener.onDownloadRequested(true);
+        } else if (maximumPointsChanged || sheetRegexChanged || nameChanged
+                || stickiedTitlesChanged) {
+            managerChangedListener.onManagerChanged();
+            downloadRequestedListener.onDownloadRequested(false);
+        }
+
+    }
+
 
     /* DownloadManager interactions */
     public void completeDownload(SwipeRefreshLayout layout) {
@@ -347,6 +384,7 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
             textLayout.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    // TODO: Replace dd by document
                     DownloadDocument dd = (DownloadDocument) v.getTag(R.id.file_tag);
                     Log.d("DownloadDocsAdapter|" + manager.getName(),
                             "Opened: " + dd.title);
@@ -386,20 +424,12 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
     }
 
     /* Listener stuff */
-    public void setListener(OnManagerChangedListener listener) {
-        this.listener = listener;
-    }
-
-    private void notifyListener(boolean downloadNecessary) {
-        if (listener != null) {
-            listener.onManagerChanged(downloadNecessary);
-        } else {
-            Log.e("DownloadManager", "An OnManagerChangedListener should have been set");
-        }
-    }
-
     interface OnManagerChangedListener {
-        void onManagerChanged(boolean downloadNecessary);
+        void onManagerChanged();
+    }
+
+    interface OnDownloadRequestedListener {
+        void onDownloadRequested(boolean downloadNecessary);
     }
 
     private static final class ViewHolder {
