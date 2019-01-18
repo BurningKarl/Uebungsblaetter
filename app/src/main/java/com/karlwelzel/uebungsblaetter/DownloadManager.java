@@ -223,32 +223,45 @@ public class DownloadManager extends AsyncTask<Void, Integer, Void> {
 
     /* Simple helper functions */
     public String getPointsText() {
-        double total_points = 0;
-        double total_maximum_points = 0;
-        int number_of_sheets = 0;
+        double totalPoints = 0;
+        double totalMaximumPoints = 0;
+        int numberOfSheets = 0;
         for (DownloadDocument document : localDocuments) {
             if (document.getPoints() >= 0) {
-                total_points += document.getPoints();
-                total_maximum_points += document.getMaximumPoints();
-                number_of_sheets += 1;
+                totalPoints += document.getPoints();
+                totalMaximumPoints += document.getMaximumPoints();
+                numberOfSheets += 1;
             }
         }
         StringBuilder builder = new StringBuilder();
         builder.append(adapter.getContext().getString(R.string.points_view_prefix));
         builder.append(" ");
-        if (number_of_sheets == 0) {
+        if (numberOfSheets == 0) {
             builder.append("---");
         } else {
-            double averagePoints = total_points / number_of_sheets;
-            double averageMaximumPoints = total_maximum_points / (double) number_of_sheets;
-            double percentage = 100 * total_points / total_maximum_points;
+            // Options for displaying the points
+            // option 1: average over points and over maximum points
+            //  -> seems to be the obvious way, but is counterintuitive due to rounding errors
+            // option 2: constant maximumPoints, points according to percentage
+            //  -> Display the percentage as a number that is more directly relatable
+            // option 3: total over points and over maximum points
+            //  -> the user understand the numbers but has no sense for the because they grow
+            //     large very quickly
 
-            builder.append(String.format(Locale.GERMAN, "%.1f", averagePoints));
+            // Decision: option 3 + percentage + option 2
+            double averagePoints = (totalPoints / totalMaximumPoints) * getMaximumPoints();
+            double percentage = 100 * totalPoints / totalMaximumPoints;
+
+            builder.append(String.format(Locale.GERMAN, "%.0f", totalPoints));
             builder.append("/");
-            builder.append(String.format(Locale.GERMAN, "%.0f", averageMaximumPoints));
+            builder.append(String.format(Locale.GERMAN, "%.0f", totalMaximumPoints));
             builder.append(" ~ ");
             builder.append(String.format(Locale.GERMAN, "%.0f", percentage));
             builder.append("%");
+            builder.append(" ~ ");
+            builder.append(String.format(Locale.GERMAN, "%.1f", averagePoints));
+            builder.append("/");
+            builder.append(String.format(Locale.GERMAN, "%d", getMaximumPoints()));
         }
         return builder.toString();
     }

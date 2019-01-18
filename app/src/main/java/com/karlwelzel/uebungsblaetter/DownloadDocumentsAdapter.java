@@ -9,6 +9,7 @@ import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.content.FileProvider;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.util.Log;
@@ -33,15 +34,16 @@ import java.util.Collection;
 
 public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         implements DownloadManager.OnListUpdateListener,
-        DialogManager.OnDownloadDocumentSettingsChangedListener,
+        DownloadDocumentSettingsDialogFragment.OnDownloadDocumentSettingsChangedListener,
         DialogManager.OnDownloadManagerSettingsChangedListener {
 
     private static final int ITEM_LAYOUT_ID = R.layout.sheet_listview_item;
 
     private final CoordinatorLayout contentLayout;
     private final TextView pointsView;
-    private DownloadManager manager;
+    private final FragmentManager fragmentManager;
     private SwipeRefreshLayout swipeRefreshLayout = null;
+    private DownloadManager manager;
     private final OnManagerChangedListener managerChangedListener;
     private final OnDownloadRequestedListener downloadRequestedListener;
 
@@ -52,6 +54,7 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
         super(activity, ITEM_LAYOUT_ID);
         this.contentLayout = activity.findViewById(R.id.contentLayout);
         this.pointsView = pointsView;
+        this.fragmentManager = activity.getSupportFragmentManager();
         this.manager = manager;
         this.managerChangedListener = managerChangedListener;
         this.downloadRequestedListener = downloadRequestedListener;
@@ -110,99 +113,32 @@ public class DownloadDocumentsAdapter extends ArrayAdapter<DownloadDocument>
     }
 
     private void openDownloadDocumentSettings(final DownloadDocument document) {
-        /* Opens a dialog to edit the DownloadDocument:
-         * - title
-         * - points
-         * - maximum points
-         */
-
         Log.d("DownloadDocsAdapter|" + manager.getName(), "openDownloadDocumentSettings");
-
-        String pointsDefault, maximumPointsDefault;
-        if (document.getPoints() < 0) {
-            pointsDefault = "";
-            maximumPointsDefault = Integer.toString(manager.getMaximumPoints());
-        } else {
-            pointsDefault = Double.toString(document.getPoints());
-            maximumPointsDefault = Integer.toString(document.getMaximumPoints());
-        }
-        DialogManager.openDownloadDocumentSettings(document, getContext(), document.title, R.string.save,
-                document.title, pointsDefault, maximumPointsDefault, this);
+        DownloadDocumentSettingsDialogFragment dialog = new DownloadDocumentSettingsDialogFragment();
+        dialog.setListener(this);
+        dialog.setDefaults(document, manager);
+        dialog.show(fragmentManager);
     }
 
     @Override
-    public void onDownloadDocumentSettingsChanged(DownloadDocument document, String titleInput,
-                                                  String pointsInput, String maximumPointsInput) {
-        //titleMap
-        boolean titleChanged = false;
-        String title = titleInput.trim();
-        if (!title.isEmpty()) {
-            if (!title.equals(document.title)) {
-                Log.d("DownloadDocsAdapter|" + manager.getName(), "title changed: " + title);
-                titleChanged = true;
-            }
-        } else {
-            Log.d("DownloadDocsAdapter|" + manager.getName(),
-                    "titleInput is not a valid title");
-            Snackbar.make(contentLayout,
-                    R.string.not_a_valid_name, Snackbar.LENGTH_SHORT)
-                    .show();
-            return;
-        }
-
-        //points
-        boolean pointsChanged = false;
-        double points;
-        try {
-            points = Double.parseDouble(pointsInput);
-        } catch (NumberFormatException e) {
-            points = -1;
-        }
-        if (points != document.getPoints()) {
-            Log.d("DownloadDocsAdapter|" + manager.getName(), "points changed: " + points);
-            pointsChanged = true;
-        }
-
-        //maximumPoints
-        boolean maximumPointsChanged = false;
-        int maximumPoints;
-        try {
-            maximumPoints = Integer.parseInt(maximumPointsInput);
-            if (maximumPoints != document.getMaximumPoints()) {
-                Log.d("DownloadDocsAdapter|" + manager.getName(), "maximumPoints changed: " + maximumPoints);
-                maximumPointsChanged = true;
-            }
-        } catch (NumberFormatException e) {
-            Log.d("DownloadDocsAdapter|" + manager.getName(),
-                    "maximumPointsInput is not a number");
-            Snackbar.make(contentLayout,
-                    R.string.not_a_valid_number, Snackbar.LENGTH_SHORT)
-                    .show();
-            return;
-        }
-
-        if (titleChanged || pointsChanged || maximumPointsChanged) {
-            if (titleChanged) {
-                if (title.equals(document.titleId)) {
-                    manager.getTitleMap().remove(document.titleId);
-                } else {
-                    manager.getTitleMap().put(document.titleId, title);
-                }
-            }
-            if (pointsChanged) {
-                document.setPoints(points);
-            }
-            if (maximumPointsChanged) {
-                document.setMaximumPoints(maximumPoints);
-            }
-
-            if (titleChanged) {
-                managerChangedListener.onManagerChanged();
-                downloadRequestedListener.onDownloadRequested(false);
+    public void onDownloadDocumentSettingsChanged(DownloadDocument document, String title, double points, int maximumPoints) {
+        boolean titleChanged = !title.equals(document.title);
+        if (titleChanged) {
+            if (title.equals(document.titleId)) {
+                manager.getTitleMap().remove(document.titleId);
             } else {
-                manager.saveDownloadDocuments();
-                notifyDataSetChanged();
+                manager.getTitleMap().put(document.titleId, title);
             }
+        }
+        document.setPoints(points);
+        document.setMaximumPoints(maximumPoints);
+
+        if (titleChanged) {
+            managerChangedListener.onManagerChanged();
+            downloadRequestedListener.onDownloadRequested(false);
+        } else {
+            manager.saveDownloadDocuments();
+            notifyDataSetChanged();
         }
     }
 

@@ -31,6 +31,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
+// TODO: Add export function for points
+
 public class MainActivity extends AppCompatActivity implements
         TabLayout.OnTabSelectedListener, SwipeRefreshLayout.OnRefreshListener,
         DownloadDocumentsAdapter.OnManagerChangedListener,
